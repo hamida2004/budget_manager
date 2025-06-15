@@ -2,27 +2,61 @@
   "name": "budget_manager",
   "version": "0.1.0",
   "private": true,
-  "dependencies": {
-    "@testing-library/dom": "^10.4.0",
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^13.5.0",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "react-scripts": "5.0.1",
-    "web-vitals": "^2.1.4"
-  },
+  "description": "Electron desktop app for managing budgets locally",
+  "author": "Hamida",
+  "main": "public/electron.js",
+  "homepage": "./",
   "scripts": {
-    "start": "react-scripts start",
+    "react-start": "react-scripts start",
+    "electron-dev": "ELECTRON_START_URL=http://localhost:3000 electron .",
+    "start": "concurrently \"npm run react-start\" \"wait-on http://localhost:3000 && electron .\"",
     "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "electron-pack": "npm run build && electron-builder"
+  },
+  "build": {
+    "appId": "com.hamida.reactelectronapp",
+    "files": [
+      "build/**/*",
+      "public/electron.js"
+    ],
+    "directories": {
+      "buildResources": "assets"
+    }
   },
   "eslintConfig": {
     "extends": [
       "react-app",
       "react-app/jest"
     ]
+  },
+  "dependencies": {
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^13.5.0",
+    "axios": "^1.6.8",
+    "bcrypt": "^6.0.0",
+    "concurrently": "^9.1.2",
+    "gh-pages": "^6.3.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.1",
+    "jspdf-autotable": "^5.0.2",
+    "knex": "^3.1.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-icons": "^5.5.0",
+    "react-router-dom": "^6.23.0",
+    "react-scripts": "5.0.1",
+    "recharts": "^2.15.3",
+    "sqlite3": "^5.1.7",
+    "styled-components": "^6.1.10",
+    "wait-on": "^8.0.3",
+    "web-vitals": "^2.1.4"
+  },
+  "devDependencies": {
+    "electron": "^36.4.0",
+    "electron-builder": "^24.13.3",
+    "electron-is-dev": "^2.0.0"
   },
   "browserslist": {
     "production": [

@@ -8,8 +8,6 @@ import Profile from "./pages/Profile";
 import { BudgetProvider } from "./context/budgetContext";
 import ManageBudgets from "./pages/ManageBudgets";
 import Notifications from "./pages/Notifications";
-import BudgetDevisions from "./pages/BudgetDevisions";
-import Report from "./pages/Report";
 
 function App() {
   return (
@@ -21,11 +19,9 @@ function App() {
             <Route path="/signup" element={<Signup />} />
             <Route path="/" element={<Home />} />
             <Route path="/budget" element={<ManageBudgets />} />
-            <Route path="/budget-div" element={<BudgetDevisions />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/settings" element={<Settings />} />
-            <Route path="/report" element={<Report/>} />
           </Routes>
         </UserProvider>
       </BudgetProvider>
