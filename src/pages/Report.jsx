@@ -1,242 +1,255 @@
-import html2canvas from "html2canvas";
+import React, { useEffect, useState } from "react";
+import styled from "styled-components";
+import { useNavigate } from "react-router-dom";
+import { FaBars, FaMoneyBillWave } from "react-icons/fa";
+import { MdExpandLess, MdExpandMore } from "react-icons/md";
 import { jsPDF } from "jspdf";
-import React, { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import Button from '../components/button'
-import { useBudget } from "../context/budgetContext";
+import Nav from "../components/nav";
+import SideBar from "../components/SideBar";
+import Button from "../components/button";
+import { useUser } from "../context/userContext";
 
-function Report() {
-    const [laboratory, setLaboratory] = useState({});
-    useEffect(() => {
-        fetchLaboratory()
-    }, [])
-    const fetchLaboratory = async () => {
-        try {
-            const lab = await window.api.getLaboratory();
-            setLaboratory(lab[0] || {});
-        } catch (error) {
-            console.error("Error fetching laboratory:", error);
-        }
-    };
-    const {  budgets,totalBudget, totalSpent, remainingBudget, expenses } = useBudget();
+const Container = styled.div`
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  position: relative;
+`;
+
+const Section = styled.div`
+  margin-top: 20px;
+  width: 100%;
+`;
+
+const ToggleButton = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  margin: 5px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.2);
+  padding: 8px 20px;
+  width: 100%;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+  &:hover {
+    background-color: #f5f5f5;
+  }
+`;
+
+const List = styled.ul`
+  list-style: none;
+  padding-left: 0px;
+`;
+
+const ErrorMessage = styled.p`
+  color: red;
+  font-size: 14px;
+  margin: 5px 0;
+`;
+
+const FilterContainer = styled.div`
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  margin-top: 20px;
+`;
+
+const DateInput = styled.input`
+  padding: 5px;
+  border: 1px solid #001A82;
+  border-radius: 8px;
+`;
+
+const TransactionItem = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px;
+  margin: 8px;
+  box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+`;
+
+const Report = () => {
+  const { user } = useUser();
+  const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [budgetDivisions, setBudgetDivisions] = useState([]);
+  const [sousarticles, setSousarticles] = useState([]);
+  const [laboratory, setLaboratory] = useState({});
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [filteredBudgetDivisions, setFilteredBudgetDivisions] = useState([]);
+  const [error, setError] = useState("");
+  const [openDivisions, setOpenDivisions] = useState({});
+
+  const getSousArticleName = (id) => {
+    const article = sousarticles.find((a) => a.id === id);
+    return article ? article.name : "Unknown";
+  };
+
+  useEffect(() => {
+    if (!user) return navigate("/login");
+    (async () => {
+      try {
+        const [divs, sous, lab] = await Promise.all([
+          window.api.getBudgetDivisions(),
+          window.api.getSousarticles(),
+          window.api.getLaboratory(),
+        ]);
+        // Assume getBudgetDivisions returns joined data with budgets.created_at and budgets.type
+        setBudgetDivisions(divs);
+        setSousarticles(sous);
+        setLaboratory(lab[0] || {});
+        setFilteredBudgetDivisions(divs); // Initially show all divisions
+        console.log(budgetDivisions,'///')
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        setError("Failed to load data.");
+      }
+    })();
+  }, [user, navigate]);
+
+  const handleFilter = () => {
+    if (!fromDate || !toDate) {
+      setError("Please select both start and end dates.");
+      return;
+    }
+    if (new Date(fromDate) > new Date(toDate)) {
+      setError("Start date cannot be after end date.");
+      return;
+    }
+    setError("");
+    const filtered = budgetDivisions.filter((div) => {
+      const divDate = new Date(div.created_at);
+      return divDate >= new Date(fromDate) && divDate <= new Date(toDate);
+    });
+    setFilteredBudgetDivisions(filtered);
+  };
+
+  const toggleDivision = (id) => {
+    setOpenDivisions((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const calculateSousarticleTotals = (divs) => {
+    const totals = {};
+    sousarticles.forEach((sa) => {
+      totals[sa.id] = 0;
+    });
+    divs.forEach((div) => {
+      totals[div.sousarticle_id] = (totals[div.sousarticle_id] || 0) + div.amount;
+    });
+    return Object.entries(totals)
+      .filter(([_, total]) => total > 0)
+      .map(([id, total]) => ({
+        id: parseInt(id),
+        name: getSousArticleName(id),
+        total,
+      }));
+  };
 
 
-    const generateBudgetsPDF = async (budgets, laboratory, totalBudget) => {
-        try {
-            // Create a container for the report
-            const container = document.createElement("div");
-            container.style.padding = "20px";
-            container.style.fontFamily = "Arial";
-            container.style.fontSize = "12px";
-            container.style.background = "#fff";
-            container.style.width = "800px"; // Fixed width for PDF rendering
-            container.style.margin = "0 auto";
+  // Last 5 budget divisions for summary
+  const lastFiveDivisions = budgetDivisions.slice(-5).reverse();
 
-            // Heading
-            const heading = document.createElement("h2");
-            heading.textContent = "تقسيم ميزانية التسيير الخاصة بمخبر الذكاء الاصطناعي وتطبيقاته";
-            heading.style.textAlign = "center";
-            container.appendChild(heading);
+  return (
+    <>
+      <Nav />
+      <Container>
+        <FaBars
+          size={24}
+          style={{ cursor: "pointer", alignSelf: "flex-start", position: "absolute" }}
+          onClick={() => setSidebarOpen(true)}
+        />
+        <h2 style={{ color: "#001A82" }}>Report & History</h2>
+        {error && <ErrorMessage>{error}</ErrorMessage>}
+        <Section>
+          <h3>Recent Budget Divisions</h3>
+          <List>
+            {lastFiveDivisions.map((div) => {
+              const amount = div.budget_type === "additional" ? `+${div.amount.toFixed(2)} DA` : `-${div.amount.toFixed(2)} DA`;
+              const date = new Date(div.created_at).toISOString().split("T")[0];
+              // const date = div.created_at;
+              const number = div.sousarticle_id.toString();
+              const name = getSousArticleName(div.sousarticle_id);
+              const type = div.budget_type === "initial" ? "expense" : "income";
+              return (
+                <li key={div.id}>
+                  <ToggleButton onClick={() => toggleDivision(div.id)}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <FaMoneyBillWave size={20} color="#001A82" />
+                      <span>{name}</span>
+                    </div>
+                    <div>{openDivisions[div.id] ? <MdExpandLess size={20} /> : <MdExpandMore size={20} />}</div>
+                  </ToggleButton>
+                  {openDivisions[div.id] && (
+                    <TransactionItem>
+                      <span>Amount: {amount}</span>
+                      <span>Date: {date}</span>
+                      <span>Sousarticle Number: {number}</span>
+                      <span>Type: {type}</span>
+                    </TransactionItem>
+                  )}
+                </li>
+              );
+            })}
+          </List>
+        </Section>
+        <Section>
+          <h3>Filter Budget Divisions</h3>
+          <FilterContainer>
+            <DateInput
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+            />
+            <DateInput
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+            />
+            <Button text="Filter" handleClick={handleFilter} />
+          </FilterContainer>
+          <List>
+            {filteredBudgetDivisions.map((div) => {
+              const amount = div.budget_type === "additional" ? `+${div.amount.toFixed(2)} DA` : `-${div.amount.toFixed(2)} DA`;
+              const date = new Date(div.created_at).toISOString().split("T")[0];
+              // const date = div.created_at;
+              const number = div.sousarticle_id.toString();
+              const name = getSousArticleName(div.sousarticle_id);
+              const type = div.budget_type === "initial" ? "expense" : "income";
+              return (
+                <li key={div.id}>
+                  <ToggleButton onClick={() => toggleDivision(div.id)}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <FaMoneyBillWave size={20} color="#001A82" />
+                      <span>{name}</span>
+                    </div>
+                    <div>{openDivisions[div.id] ? <MdExpandLess size={20} /> : <MdExpandMore size={20} />}</div>
+                  </ToggleButton>
+                  {openDivisions[div.id] && (
+                    <TransactionItem>
+                      <span>Amount: {amount}</span>
+                      <span>Date: {date}</span>
+                      <span>Sousarticle Number: {number}</span>
+                      <span>Type: {type}</span>
+                    </TransactionItem>
+                  )}
+                </li>
+              );
+            })}
+          </List>
+        </Section>
+        {sidebarOpen && <SideBar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
+      </Container>
+    </>
+  );
+};
 
-            // Laboratory Information
-            if (laboratory) {
-                const labInfo = document.createElement("div");
-                labInfo.style.marginBottom = "20px";
-                labInfo.innerHTML = `
-            <p><strong>Laboratory Name:</strong> ${laboratory.name}</p>
-            <p><strong>Wilaya:</strong> ${laboratory.wilaya}</p>
-            <p><strong>University:</strong> ${laboratory.univ}</p>
-          `;
-                container.appendChild(labInfo);
-            }
-
-            // Summary Section
-            const summary = document.createElement("div");
-            summary.style.marginBottom = "20px";
-            summary.innerHTML = `
-          <p><strong>Total Budget:</strong> ${totalBudget.toFixed(2)} DA</p>
-        `;
-            container.appendChild(summary);
-
-            // Table Section
-            const table = document.createElement("table");
-            table.style.width = "100%";
-            table.style.borderCollapse = "collapse";
-            table.style.border = "1px solid black";
-            table.innerHTML = `
-          <thead style="background-color:#001A82; color:white;">
-            <tr>
-              <th style="border: 1px solid #000; padding: 5px;">#</th>
-              <th style="border: 1px solid #000; padding: 5px;">Year</th>
-              <th style="border: 1px solid #000; padding: 5px;">Type</th>
-              <th style="border: 1px solid #000; padding: 5px;">Total Amount (DA)</th>
-              <th style="border: 1px solid #000; padding: 5px;">Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${budgets.map((b, i) => `
-              <tr>
-                <td style="border: 1px solid #000; padding: 5px;">${i + 1}</td>
-                <td style="border: 1px solid #000; padding: 5px;">${b.year}</td>
-                <td style="border: 1px solid #000; padding: 5px;">${b.type}</td>
-                <td style="border: 1px solid #000; padding: 5px;">${parseFloat(b.total_amount).toFixed(2)} DA</td>
-                <td style="border: 1px solid #000; padding: 5px;">${new Date(b.created_at).toISOString().split("T")[0]}</td>
-              </tr>
-            `).join("")}
-          </tbody>
-        `;
-            container.appendChild(table);
-
-            // Append the container to the DOM (hidden)
-            container.style.position = "absolute";
-            container.style.top = "-9999px";
-            document.body.appendChild(container);
-
-            // Render the container to a canvas
-            const canvas = await html2canvas(container, { scale: 2 });
-            const imgData = canvas.toDataURL("image/png");
-
-            // Create the PDF
-            const pdf = new jsPDF("p", "pt", "a4");
-            const pageWidth = pdf.internal.pageSize.getWidth();
-            const imgWidth = pageWidth - 40;
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-            pdf.addImage(imgData, "PNG", 20, 20, imgWidth, imgHeight);
-            pdf.save(`budgets-report-${new Date().toISOString().split("T")[0]}.pdf`);
-
-            // Clean up
-            document.body.removeChild(container);
-
-            // Add notification for generating the report
-            await window.api.addNotification({
-                title: "Report Generated",
-                content: "A budget report has been downloaded.",
-                amount:null
-            });
-
-            alert("✅ PDF generated successfully!");
-        } catch (err) {
-            console.error("❌ Error generating PDF:", err);
-            alert("Failed to generate PDF. Please check the console.");
-        }
-    };
-
-    const generatePDF = async (totalBudget, totalSpent, remainingBudget, expenses, laboratory) => {
-        try {
-            const container = document.createElement("div");
-            container.style.padding = "20px";
-            container.style.fontFamily = "Arial";
-            container.style.fontSize = "12px";
-            container.style.background = "#fff";
-            container.style.width = "800px";
-            container.style.margin = "0 auto";
-
-            const heading = document.createElement("h2");
-            heading.textContent = "تقسيم ميزانية التسيير الخاصة بمخبر الذكاء الاصطناعي وتطبيقاته";
-            heading.style.textAlign = "center";
-            heading.style.color = "#001A82";
-            container.appendChild(heading);
-
-            if (laboratory) {
-                const labInfo = document.createElement("div");
-                labInfo.style.marginBottom = "20px";
-                labInfo.innerHTML = `
-            <p><strong>Laboratory Name:</strong> ${laboratory.name}</p>
-            <p><strong>Wilaya:</strong> ${laboratory.wilaya}</p>
-            <p><strong>University:</strong> ${laboratory.univ}</p>
-          `;
-                container.appendChild(labInfo);
-            }
-
-            const summary = document.createElement("div");
-            summary.style.marginBottom = "20px";
-            summary.innerHTML = `
-          <div style="display: flex; align-items: center; justify-content: space-between; width: 80%;">
-            <p><strong>Total Budget:</strong> ${totalBudget.toFixed(2)} DA</p>
-            <p><strong>Total Spent:</strong> ${totalSpent.toFixed(2)} DA</p>
-            <p><strong>Remaining:</strong> ${remainingBudget.toFixed(2)} DA</p>
-          </div>
-        `;
-            container.appendChild(summary);
-
-            const table = document.createElement("table");
-            table.style.width = "100%";
-            table.style.borderCollapse = "collapse";
-            table.style.border = "1px solid black";
-            table.innerHTML = `
-          <thead style="background-color:#001A82; color:white;">
-            <tr>
-              <th style="border: 1px solid #000; padding: 5px;">#</th>
-              <th style="border: 1px solid #000; padding: 5px;">Name</th>
-              <th style="border: 1px solid #000; padding: 5px;">Amount (DA)</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${expenses
-                    .map(
-                        (exp, i) => `
-              <tr>
-                <td style="border: 1px solid #000; padding: 5px;">${i + 1}</td>
-                <td style="border: 1px solid #000; padding: 5px;">${exp.name || "Unnamed"}</td>
-                <td style="border: 1px solid #000; padding: 5px;">${parseFloat(exp.amount).toFixed(2)} DA</td>
-              </tr>
-            `
-                    )
-                    .join("")}
-          </tbody>
-        `;
-            container.appendChild(table);
-
-            container.style.position = "absolute";
-            container.style.top = "-9999px";
-            document.body.appendChild(container);
-
-            const canvas = await html2canvas(container, { scale: 2 });
-            const imgData = canvas.toDataURL("image/png");
-
-            const pdf = new jsPDF("p", "pt", "a4");
-            const pageWidth = pdf.internal.pageSize.getWidth();
-            const imgWidth = pageWidth - 40;
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-            pdf.addImage(imgData, "PNG", 20, 20, imgWidth, imgHeight);
-            pdf.save("budget-report.pdf");
-
-            document.body.removeChild(container);
-            alert("✅ PDF generated successfully!");
-        } catch (err) {
-            console.error("❌ Error generating PDF:", err);
-            alert("Failed to generate PDF. Please check the console.");
-        }
-    };
-    return (
-        <>
-            <div>Report</div>
-            <div
-            style={{
-                alignItems:'center',
-                justifyContent:'center',
-                display:'flex',
-                width:400
-            }}
-            ><div >
-                <Button
-                    text={"Generate Report"}
-                    handleClick={() => generatePDF(totalBudget, totalSpent, remainingBudget, expenses, laboratory)}
-                />
-            </div>
-            <div
-               
-            >
-                <Button text={' Generate budgets Report'} handleClick={() => generateBudgetsPDF(budgets, laboratory, totalBudget)}>
-                   
-                </Button>
-            </div>
-            </div>
-            <Link to={'/'}>go back</Link>
-        </>
-    )
-}
-
-export default Report
+export default Report;

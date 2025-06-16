@@ -91,6 +91,7 @@ const BudgetDevisions = () => {
   const { addExpense, deleteExpense } = useBudget();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chapters, setChapters] = useState([]);
+  const [wilaya, setWilaya] = useState('')
   const [articles, setArticles] = useState([]);
   const [sousarticles, setSousarticles] = useState([]);
   const [openChapters, setOpenChapters] = useState({});
@@ -103,7 +104,71 @@ const BudgetDevisions = () => {
   const [budgets, setBudgets] = useState([]);
   const [budgetDivisions, setBudgetDivisions] = useState([]);
 
-  // Icon and color mapping for chapters
+  const wilayas = [
+    { id: 1, wilaya: "Adrar" },
+    { id: 2, wilaya: "Chlef" },
+    { id: 3, wilaya: "Laghouat" },
+    { id: 4, wilaya: "Oum El Bouaghi" },
+    { id: 5, wilaya: "Batna" },
+    { id: 6, wilaya: "Béjaïa" },
+    { id: 7, wilaya: "Biskra" },
+    { id: 8, wilaya: "Béchar" },
+    { id: 9, wilaya: "Blida" },
+    { id: 10, wilaya: "Bouira" },
+    { id: 11, wilaya: "Tamanrasset" },
+    { id: 12, wilaya: "Tébessa" },
+    { id: 13, wilaya: "Tlemcen" },
+    { id: 14, wilaya: "Tiaret" },
+    { id: 15, wilaya: "Tizi Ouzou" },
+    { id: 16, wilaya: "Alger" },
+    { id: 17, wilaya: "Djelfa" },
+    { id: 18, wilaya: "Jijel" },
+    { id: 19, wilaya: "Sétif" },
+    { id: 20, wilaya: "Saïda" },
+    { id: 21, wilaya: "Skikda" },
+    { id: 22, wilaya: "Sidi Bel Abbès" },
+    { id: 23, wilaya: "Annaba" },
+    { id: 24, wilaya: "Guelma" },
+    { id: 25, wilaya: "Constantine" },
+    { id: 26, wilaya: "Médéa" },
+    { id: 27, wilaya: "Mostaganem" },
+    { id: 28, wilaya: "M'Sila" },
+    { id: 29, wilaya: "Mascara" },
+    { id: 30, wilaya: "Ouargla" },
+    { id: 31, wilaya: "Oran" },
+    { id: 32, wilaya: "El Bayadh" },
+    { id: 33, wilaya: "Illizi" },
+    { id: 34, wilaya: "Bordj Bou Arréridj" },
+    { id: 35, wilaya: "Boumerdès" },
+    { id: 36, wilaya: "El Tarf" },
+    { id: 37, wilaya: "Tindouf" },
+    { id: 38, wilaya: "Tissemsilt" },
+    { id: 39, wilaya: "El Oued" },
+    { id: 40, wilaya: "Khenchela" },
+    { id: 41, wilaya: "Souk Ahras" },
+    { id: 42, wilaya: "Tipaza" },
+    { id: 43, wilaya: "Mila" },
+    { id: 44, wilaya: "Aïn Defla" },
+    { id: 45, wilaya: "Naâma" },
+    { id: 46, wilaya: "Aïn Témouchent" },
+    { id: 47, wilaya: "Ghardaïa" },
+    { id: 48, wilaya: "Relizane" },
+    { id: 49, wilaya: "Timimoun" },
+    { id: 50, wilaya: "Bordj Badji Mokhtar" },
+    { id: 51, wilaya: "Ouled Djellal" },
+    { id: 52, wilaya: "Beni Abbès" },
+    { id: 53, wilaya: "In Salah" },
+    { id: 54, wilaya: "In Guezzam" },
+    { id: 55, wilaya: "Touggourt" },
+    { id: 56, wilaya: "Djanet" },
+    { id: 57, wilaya: "El M'Ghair" },
+    { id: 58, wilaya: "El Menia" },
+  ];
+  const findWilaya = (id) => {
+    const wilaya = wilayas.find((w) => w.id === id);
+    setWilaya(wilaya);
+  };
+
   const chapterStyles = {
     "REMBOURSEMENT DES FRAIS": { icon: FaMoneyBillWave, color: "#e74c3c" },
     "FOURNITURES": { icon: FaFlask, color: "#3498db" },
@@ -137,6 +202,7 @@ const BudgetDevisions = () => {
     const article = sousarticles.find((a) => a.id === id);
     return article ? article.name : "غير معروف";
   };
+
   useEffect(() => {
     if (!user) return navigate("/login");
     (async () => {
@@ -151,119 +217,167 @@ const BudgetDevisions = () => {
         setSousarticles(so);
         fetchLaboratory();
         fetchBudgets();
-        console.log(budgets)
         fetchBudgetDivisions();
+
       } catch (error) {
         console.error("Error fetching data:", error);
         setError("Failed to load budget data.");
       }
     })();
+    console.log('///', budgetDivisions)
+
   }, [user, navigate]);
 
   const totalBudget = budgets.reduce((sum, budget) => sum + (budget.total_amount || 0), 0);
   const totalSpent = budgets.reduce((sum, budget) => sum + (budget.spent || 0), 0);
   const totalRemaining = totalBudget - totalSpent;
 
-  const generatePDF = async () => {
+  function generatePDF() {
     try {
-      const container = document.createElement("div");
-      container.style.padding = "20px";
-      container.style.fontFamily = "Arial";
-      container.style.fontSize = "12px";
-      container.style.background = "#fff";
-      container.style.width = "800px";
-      container.style.margin = "0 auto";
-
-      const heading = document.createElement("h2");
-      heading.textContent = "تقسيم ميزانية التسيير الخاصة بمخبر الذكاء الاصطناعي وتطبيقاته";
-      heading.style.textAlign = "center";
-      heading.style.color = "#001a82";
-      container.appendChild(heading);
-
-      if (laboratory) {
-        const labInfo = document.createElement("div");
-        labInfo.style.marginBottom = "20px";
-        labInfo.innerHTML = `
-          <p><strong>Laboratory Name:</strong> ${laboratory.name}</p>
-          <p><strong>Wilaya:</strong> ${laboratory.wilaya}</p>
-          <p><strong>University:</strong> ${laboratory.univ}</p>
-        `;
-        container.appendChild(labInfo);
-      }
-
-      const summary = document.createElement("div");
-      summary.style.marginBottom = "20px";
-      summary.innerHTML = `
-        <div style="display: flex; align-items: center; justify-content: space-between; width: 80%;">
-          <p><strong>Total Budget:</strong> ${totalBudget.toFixed(2)} DA</p>
-          <p><strong>Total Spent:</strong> ${totalSpent.toFixed(2)} DA</p>
-          <p><strong>Remaining:</strong> ${totalRemaining.toFixed(2)} DA</p>
-        </div>
-        <div style="margin-top: 10px;">
-          ${budgets.map(budget => `
-            <p><strong>Budget ${budget.id}:</strong> Total ${budget.total_amount.toFixed(2)} DA, 
-            Spent ${budget.spent.toFixed(2)} DA, 
-            Remaining ${(budget.total_amount - budget.spent).toFixed(2)} DA</p>
-          `).join('')}
-        </div>
-      `;
-      container.appendChild(summary);
-
-      const table = document.createElement("table");
-      table.style.width = "100%";
-      table.style.borderCollapse = "collapse";
-      table.style.border = "1px solid black";
-      table.innerHTML = `
-        <thead style="background-color:#001a82; color:white;">
-          <tr>
-            <th style="border: 1px solid #000; padding: 5px;">#</th>
-            <th style="border: 1px solid #000; padding: 5px;">Name</th>
-            <th style="border: 1px solid #000; padding: 5px;">Amount (DA)</th>
-            <th style="border: 1px solid #000; padding: 5px;">Budget Name</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${budgetDivisions
-          .map((exp, i) => {
-            const division = budgetDivisions.find(div => div.sousarticle_id === exp.sousarticle_id);
-            const budget = budgets.find(b => b.id === division?.budget_id);
-            console.log(budget)
-            return `
-                <tr>
-                  <td style="border: 1px solid #000; padding: 5px;">${i + 1}</td>
-                  <td style="border: 1px solid #000; padding: 5px;">${getSousArticleName(exp.sousarticle_id)}</td>
-                  <td style="border: 1px solid #000; padding: 5px;">${parseFloat(exp.amount).toFixed(2)} DA</td>
-                  <td style="border: 1px solid #000; padding: 5px;">${budget ? `${budget.type} ${budget.id}` : 'N/A'}</td>
-                </tr>
-              `;
-          })
-          .join("")}
-        </tbody>
-      `;
-      container.appendChild(table);
-
-      container.style.position = "absolute";
-      container.style.top = "-9999px";
-      document.body.appendChild(container);
-
-      const canvas = await html2canvas(container, { scale: 2 });
-      const imgData = canvas.toDataURL("image/png");
-
+      findWilaya(laboratory.wilaya)
       const pdf = new jsPDF("p", "pt", "a4");
       const pageWidth = pdf.internal.pageSize.getWidth();
-      const imgWidth = pageWidth - 40;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 40;
+      const lineHeight = 15;
+      const tableStartY = 160;
+      let y = tableStartY;
+      const tableWidth = pageWidth - 2 * margin;
+      const colWidths = [tableWidth * 0.6, tableWidth * 0.2, tableWidth * 0.2]; // Libellé: 60%, Amount (Annual): 20%, Amount (Additional): 20%
+      let isFirstPage = true;
 
-      pdf.addImage(imgData, "PNG", 20, 20, imgWidth, imgHeight);
+      // Function to add header on first page only
+      const addHeader = () => {
+        if (!isFirstPage) return;
+        pdf.setFont("Helvetica", "normal");
+        pdf.setFontSize(12);
+        pdf.text("People's Democratic Republic of Algeria", margin, 40);
+        if (laboratory) {
+          pdf.text(`Ministry of Higher Education and Scientific Research`, margin, 60);
+          pdf.text(`${laboratory.univ || "N/A"}`, margin, 80);
+          pdf.text(`Faculty of Exact Science`, margin, 100);
+          pdf.text(`Laboratory: ${laboratory.name || "N/A"}`, margin, 120);
+          pdf.text(`Wilaya: ${wilaya || laboratory.wilaya || "N/A"}`, margin, 140);
+        }
+      };
+
+      // Function to check for page break
+      const checkPageBreak = (additionalHeight) => {
+        if (y + additionalHeight > pageHeight - margin) {
+          pdf.addPage();
+          y = 60;
+          isFirstPage = false;
+          return true;
+        }
+        return false;
+      };
+
+      // Function to draw table row
+      const drawTableRow = (label, amountAnnual, amountAdditional, indent = 0, isBold = false) => {
+        checkPageBreak(lineHeight + 10);
+        pdf.setFont("Helvetica", isBold ? "bold" : "normal");
+        pdf.setFontSize(10);
+        pdf.text(label, margin + indent, y + 10, { maxWidth: colWidths[0] - indent });
+        pdf.text(amountAnnual, margin + colWidths[0] + colWidths[1] - 5, y + 10, { align: "right" });
+        pdf.text(amountAdditional, margin + tableWidth - 5, y + 10, { align: "right" });
+        pdf.rect(margin, y, colWidths[0], lineHeight); // Libellé cell
+        pdf.rect(margin + colWidths[0], y, colWidths[1], lineHeight); // Amount (Annual) cell
+        pdf.rect(margin + colWidths[0] + colWidths[1], y, colWidths[2], lineHeight); // Amount (Additional) cell
+        y += lineHeight;
+      };
+
+      // Draw table header
+      addHeader();
+      pdf.setFont("Helvetica", "bold");
+      pdf.setFontSize(10);
+      pdf.text("Libellé", margin + 10, y + 10);
+      pdf.text("Amount (Annual)", margin + colWidths[0] + colWidths[1] - 5, y + 10, { align: "right" });
+      pdf.text("Amount (Additional)", margin + tableWidth - 5, y + 10, { align: "right" });
+      pdf.rect(margin, y, colWidths[0], lineHeight);
+      pdf.rect(margin + colWidths[0], y, colWidths[1], lineHeight);
+      pdf.rect(margin + colWidths[0] + colWidths[1], y, colWidths[2], lineHeight);
+      y += lineHeight;
+
+      // Table Data
+      let grandTotal = 0;
+      chapters.forEach((chapter) => {
+        const chapterArticles = articles.filter((ar) => ar.chapter_id === chapter.id);
+        let chapterTotal = 0;
+
+        // Chapter Row
+        drawTableRow(chapter.name, "", "", 10, true);
+
+        if (chapterArticles.length === 0) {
+          drawTableRow("", "0.00", "0.00");
+        } else {
+          chapterArticles.forEach((article) => {
+            const articleSousarticles = sousarticles.filter((sa) => sa.article_id === article.id);
+            const articleTotal = calculateArticleTotal(article.id);
+            chapterTotal += articleTotal;
+
+            // Article Row
+            drawTableRow(article.name, "", "", 20);
+
+            if (articleSousarticles.length === 0) {
+              drawTableRow("", "0.00", "0.00");
+            } else {
+              articleSousarticles.forEach((sousarticle) => {
+                const initialDivision = budgetDivisions.find(
+                  (div) => div.sousarticle_id === sousarticle.id && div.budget_id === 1
+                );
+                const additionalDivision = budgetDivisions.find(
+                  (div) => div.sousarticle_id === sousarticle.id && div.budget_id !== 1
+                );
+                const amountAnnual = initialDivision ? parseFloat(initialDivision.amount) : 0;
+                const amountAdditional = additionalDivision ? parseFloat(additionalDivision.amount) : 0;
+                const formattedAmountAnnual = `$${amountAnnual.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                const formattedAmountAdditional = `$${amountAdditional.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+                // Sousarticle Row
+                drawTableRow(sousarticle.name, formattedAmountAnnual, formattedAmountAdditional, 40);
+              });
+            }
+
+            // Article Total
+            if (articleSousarticles.length > 0) {
+              drawTableRow(
+                "Total Partiel",
+                "",
+                `$${articleTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                20,
+                true
+              );
+            }
+          });
+        }
+
+        // Chapter Total
+        drawTableRow(
+          "Total Partiel",
+          "",
+          `$${chapterTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          10,
+          true
+        );
+        grandTotal += chapterTotal;
+      });
+
+      // Grand Total
+      drawTableRow(
+        "TOTAL GENERAL DU BUDGET",
+        "",
+        `$${grandTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        10,
+        true
+      );
+
       pdf.save("budget-report.pdf");
-
-      document.body.removeChild(container);
       alert("✅ PDF generated successfully!");
     } catch (err) {
       console.error("❌ Error generating PDF:", err);
       alert("Failed to generate PDF. Please check the console.");
     }
-  };
+  }
 
   const fetchLaboratory = async () => {
     try {
@@ -356,10 +470,10 @@ const BudgetDevisions = () => {
   };
 
   const saveExpense = async (e, sousarticleId, articleId, name, budgetId) => {
-    e.preventDefault()
+    e.preventDefault();
     setError("");
     const amount = expenseInputs[`${sousarticleId}_${budgetId}`];
-    const budget = budgets.find(b => b.id === budgetId);
+    const budget = budgets.find((b) => b.id === budgetId);
 
     if (!amount || amount <= 0) {
       setError("Please enter a valid expense amount.");
@@ -377,14 +491,12 @@ const BudgetDevisions = () => {
     }
 
     try {
-      // Add budget division
       await window.api.addBudgetDivision({
         budget_id: budgetId,
         sousarticle_id: sousarticleId,
-        amount,
+        amount
       });
 
-      // Update budget's spent amount
       const newSpent = budget.spent + amount;
       await window.api.updateBudgets({
         id: budgetId,
@@ -393,29 +505,25 @@ const BudgetDevisions = () => {
         spent: newSpent,
       });
 
-      // Update local budgets state
-      setBudgets(prevBudgets =>
-        prevBudgets.map(b =>
+      setBudgets((prevBudgets) =>
+        prevBudgets.map((b) =>
           b.id === budgetId ? { ...b, spent: newSpent } : b
         )
       );
 
-      // Add expense
       await addExpense({ sousarticle_id: sousarticleId, article_id: articleId, name, amount });
 
-      // Add notification
       await window.api.addNotification({
         title: "New Expense Added",
         content: `An expense of ${parseFloat(amount).toFixed(2)} DA was added for "${name}" in Budget ${budgetId}.`,
         amount: amount,
       });
 
-      // Clear input
       setExpenseInputs((prev) => ({ ...prev, [`${sousarticleId}_${budgetId}`]: 0 }));
 
-      // Refresh divisions
       fetchBudgetDivisions();
     } catch (error) {
+      return
       console.error("Error saving expense:", error);
       setError(`Failed to save expense: ${error.message}`);
     }
@@ -459,19 +567,25 @@ const BudgetDevisions = () => {
           </h3>
           <div
             style={{
-              width: '100%',
-              display: 'flex',
-              padding: '0px 20px',
-              alignItems: 'center',
-              justifyContent: "space-between"
+              width: "100%",
+              display: "flex",
+              padding: "0px 20px",
+              alignItems: "center",
+              justifyContent: "space-between",
             }}
           >
-            {budgets.map(budget => (
+            {budgets.map((budget) => (
               <div key={budget.id}>
                 <h4>{budget.type} {budget.id}</h4>
-                <p>Total: <span style={{ color: "#001A82" }}>{budget.total_amount.toFixed(2)} DA</span></p>
-                <p>Spent: <span style={{ color: "#001A82" }}>{budget.spent.toFixed(2)} DA</span></p>
-                <p>Remaining: <span style={{ color: "#001A82" }}>{(budget.total_amount - budget.spent).toFixed(2)} DA</span></p>
+                <p>
+                  Total: <span style={{ color: "#001A82" }}>{budget.total_amount.toFixed(2)} DA</span>
+                </p>
+                <p>
+                  Spent: <span style={{ color: "#001A82" }}>{budget.spent.toFixed(2)} DA</span>
+                </p>
+                <p>
+                  Remaining: <span style={{ color: "#001A82" }}>{(budget.total_amount - budget.spent).toFixed(2)} DA</span>
+                </p>
               </div>
             ))}
           </div>
@@ -621,7 +735,7 @@ const BudgetDevisions = () => {
                                   >
                                     <div>{sa.name}</div>
                                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                                      {budgets.map(budget => (
+                                      {budgets.map((budget) => (
                                         hasDivision(sa.id, budget.id) ? (
                                           <div key={budget.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                                             <span>Budget {budget.id}:</span>

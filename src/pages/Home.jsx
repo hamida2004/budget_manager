@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { FaBars } from "react-icons/fa";
+import { FaBars, FaPlus, FaTrash, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import SideBar from "../components/SideBar";
 import Nav from "../components/nav";
 import { useUser } from "../context/userContext";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import { useBudget } from "../context/budgetContext";
+import { Doughnut } from "react-chartjs-2";
+import { Chart as ChartJS, ArcElement, Tooltip } from "chart.js";
+
+ChartJS.register(ArcElement, Tooltip);
 
 const Container = styled.div`
-  position:relative;
+  position: relative;
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -52,26 +56,18 @@ const PieWrapper = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding: 20px;
+    box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
 `;
 
-const PieChart = styled.div`
-  width: 250px;
-  height: 250px;
-  border-radius: 50%;
-  background: conic-gradient(
-    ${(props) =>
-    props.colors
-      .map((color, i) => `${color.color} ${color.start}% ${color.end}%`)
-      .join(", ")}
-  );
-  position: relative;
+const LegendContainer = styled.div`
+  flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #333;
-  font-weight: bold;
-  font-size: 18px;
-  text-align: center;
+  flex-direction: column;
+  padding: 20px;
+  box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
 `;
 
 const Legend = styled.ul`
@@ -82,8 +78,10 @@ const Legend = styled.ul`
 
 const LegendItem = styled.li`
   display: flex;
-  align-items: center;
+  flex-direction: column;
   margin-bottom: 10px;
+  position: relative;
+  cursor: pointer;
   span {
     display: inline-block;
     width: 16px;
@@ -93,8 +91,85 @@ const LegendItem = styled.li`
   }
 `;
 
+const Span = styled.span`
+width:100%;
+`
+
+const LegendHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const ProgressBar = styled.div`
+  width: 100%;
+  height: 8px;
+  background-color: #e0e0e0;
+  border-radius: 4px;
+  margin-top: 5px;
+`;
+
+const Progress = styled.div`
+  width: ${(props) => props.percent}%;
+  height: 100%;
+  background-color: ${(props) =>
+    props.percent > 50 ? "#2ecc71" : props.percent > 20 ? "#f1c40f" : "#e74c3c"};
+  border-radius: 4px;
+`;
+
+const SousarticleList = styled.ul`
+  list-style: none;
+  padding-left: 20px;
+  margin-top: 5px;
+  display: ${(props) => (props.visible ? "block" : "none")};
+`;
+
+const SousarticleItem = styled.li`
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const ShowMoreButton = styled.button`
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: #001A82;
+  cursor: pointer;
+  font-size: 14px;
+  margin-top: 10px;
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
+const ManagementSection = styled.div`
+  margin-top: 20px;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+`;
+
+const InputContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+`;
+
+const Input = styled.input`
+  padding: 5px;
+  border: 1px solid #001A82;
+  border-radius: 4px;
+`;
+
 const TransactionsSection = styled.div`
   margin-top: 20px;
+  padding: 20px;
+    box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    flex:1
 `;
 
 const TransactionGroup = styled.div`
@@ -109,7 +184,6 @@ const TransactionItem = styled.div`
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   position: relative;
   padding-left: 20px;
-
   &::before {
     content: "";
     position: absolute;
@@ -130,58 +204,158 @@ const TransactionItem = styled.div`
 const Summary = styled.div`
   margin-top: 20px;
   padding: 10px;
-  background-color: #f9f9f9;
-  border: 1px solid #ddd;
+  padding: 20px;
+  box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+`;
+
+const SummaryItem = styled.div`
+  margin-bottom: 10px;
 `;
 
 function Home() {
   const navigate = useNavigate();
   const { user } = useUser();
-  const {totalBudget } = useBudget();
+  const { totalBudget, budgets } = useBudget();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
-  const [sousarticles, setSousArticles] = useState([]);
+  const [sousarticles, setSousarticles] = useState([]);
   const [budgetDivisions, setBudgetDivisions] = useState([]);
+  const [articles, setArticles] = useState([]);
+  const [chapters, setChapters] = useState([]);
+  const [newArticleName, setNewArticleName] = useState("");
+  const [newSousarticleName, setNewSousarticleName] = useState("");
+  const [selectedArticleId, setSelectedArticleId] = useState("");
+  const [selectedChapterId, setSelectedChapterId] = useState("");
+  const [expandedArticles, setExpandedArticles] = useState({});
+  const [showAllArticles, setShowAllArticles] = useState(false);
 
   useEffect(() => {
+    console.log(user)
     if (!user) return navigate("/login");
-    fetchBudgetDivisions();
-    fetchNotifications();
-    fetchSousArticles();
+    fetchData();
   }, [user, navigate]);
 
-  const fetchBudgetDivisions = async () => {
+  const fetchData = async () => {
     try {
-      const devs = await window.api.getBudgetDivisions();
-      setBudgetDivisions(devs);
-      console.log("Budget Divisions:", devs);
+      const [divs, notifs, sousarts, arts, chaps] = await Promise.all([
+        window.api.getBudgetDivisions(),
+        window.api.getNotifications(),
+        window.api.getSousarticles(),
+        window.api.getArticles(),
+        window.api.getChapters(),
+      ]);
+      setBudgetDivisions(divs);
+      setNotifications(
+        notifs
+          .filter((notif) => notif.title !== "Report Generated")
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      );
+      setSousarticles(sousarts);
+      setArticles(arts);
+      setChapters(chaps);
     } catch (error) {
-      console.error("Error fetching budget divisions:", error);
+      console.error("Error fetching data:", error);
     }
   };
 
-  const fetchNotifications = async () => {
+  const getSousarticleName = (id) => {
+    const article = sousarticles.find((a) => a.id === id);
+    return article ? article.name : "غير معروف";
+  };
+
+  const getArticleName = (id) => {
+    const article = articles.find((a) => a.id === id);
+    return article ? article.name : "Unknown";
+  };
+
+  // Calculate article-level budget data
+  const articleBudgets = articles.map((article) => {
+    const relatedSousarticles = sousarticles.filter((sa) => sa.article_id === article.id);
+    const spent = budgetDivisions
+      .filter((div) => relatedSousarticles.some((sa) => sa.id === div.sousarticle_id))
+      .reduce((acc, div) => acc + (div.amount || 0), 0);
+    const allocated = spent; // Assuming allocated is the sum of spent for simplicity
+    const remaining = allocated - spent; // For now, spent equals allocated, so remaining is 0
+    const percentRemaining = allocated ? (remaining / allocated) * 100 : 0;
+    return { id: article.id, name: article.name, allocated, spent, remaining, percentRemaining, hasDivisions: spent > 0 };
+  });
+
+  // Filter articles with divisions
+  const contributingArticles = articleBudgets.filter((art) => art.hasDivisions);
+  const displayedArticles = showAllArticles ? articleBudgets : contributingArticles;
+
+  // Total spent and remaining
+  const totalSpent = articleBudgets.reduce((acc, art) => acc + art.spent, 0);
+  const remaining = totalBudget - totalSpent;
+
+  // Pie chart data for contributing articles
+  const pieData = {
+    labels: contributingArticles.map((art) => art.name),
+    datasets: [
+      {
+        data: contributingArticles.map((art) => art.spent),
+        backgroundColor: contributingArticles.map((_, i) => `hsl(${(i * 57) % 360}, 70%, 50%)`),
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  const pieOptions = {
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (context) => `${context.label}: ${context.raw.toFixed(2)} DA`,
+        },
+      },
+    },
+    cutout: "70%", // Doughnut hole size
+  };
+
+  // Get sousarticles for an article with budget details
+  const getSousarticlesForArticle = (articleId) => {
+    const relatedSousarticles = sousarticles.filter((sa) => sa.article_id === articleId);
+    return relatedSousarticles.map((sa) => {
+      const spent = budgetDivisions
+        .filter((div) => div.sousarticle_id === sa.id)
+        .reduce((acc, div) => acc + (div.amount || 0), 0);
+      const allocated = spent; // Assuming allocated is spent
+      const remaining = allocated - spent; // For now, 0
+      const percentRemaining = allocated ? (remaining / allocated) * 100 : 0;
+      return { id: sa.id, name: sa.name, spent, remaining, percentRemaining };
+    });
+  };
+
+  // Add new article
+  const addArticle = async () => {
+    if (!newArticleName || !selectedChapterId) return;
     try {
-      const notifs = await window.api.getNotifications();
-      const filteredNotifs = notifs
-        .filter((notif) => notif.title !== "Report Generated")
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      setNotifications(filteredNotifs);
+      const newArt = await window.api.addArticles({ name: newArticleName, chapter_id: parseInt(selectedChapterId) });
+      setArticles([...articles, newArt]);
+      setNewArticleName("");
+      setSelectedChapterId("");
     } catch (error) {
-      console.error("Error fetching notifications:", error);
+      console.error("Error adding article:", error);
     }
   };
 
- 
-  const fetchSousArticles = async () => {
+  // Add new sousarticle
+  const addSousarticle = async () => {
+    if (!newSousarticleName || !selectedArticleId) return;
     try {
-      const articles = await window.api.getSousarticles();
-      setSousArticles(articles);
+      const newSa = await window.api.addSousarticles({ name: newSousarticleName, article_id: parseInt(selectedArticleId) });
+      setSousarticles([...sousarticles, newSa]);
+      setNewSousarticleName("");
+      setSelectedArticleId("");
     } catch (error) {
-      console.error("Error loading articles:", error);
+      console.error("Error adding sousarticle:", error);
     }
   };
-
+  // Toggle article expansion
+  const toggleArticle = (id) => {
+    setExpandedArticles((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
 
   const today = new Date().toLocaleDateString();
   const yesterday = new Date(Date.now() - 86400000).toLocaleDateString();
@@ -191,42 +365,6 @@ function Home() {
     acc[date].push(notif);
     return acc;
   }, {});
-
-  // New: Calculate totalSpent from divisions
-  const totalSpent = budgetDivisions.reduce((acc, div) => acc + (div.amount || 0), 0);
-  const remaining = totalBudget - totalSpent;
-
-  const getSousArticleName = (id) => {
-    const article = sousarticles.find((a) => a.id === id);
-    return article ? article.name : "غير معروف";
-  };
-
-  // Pie chart data
-  let cumulative = 0;
-  const pieData = budgetDivisions.map((division, i) => {
-    const start = cumulative;
-    const percent = totalBudget ? (division.amount / totalBudget) * 100 : 0;
-    cumulative += percent;
-    return {
-      name: getSousArticleName(division.sousarticle_id
-      ) || `Division ${i + 1}`,
-      color: `hsl(${(i * 57) % 360}, 70%, 50%)`,
-      amount: division.amount || 0,
-      start,
-      end: cumulative,
-    };
-  });
-
-  // Add remaining budget as a gray slice
-  if (remaining > 0) {
-    pieData.push({
-      name: "Remaining",
-      color: "#ccc",
-      amount: remaining,
-      start: cumulative,
-      end: 100,
-    });
-  }
 
   return (
     <>
@@ -243,42 +381,106 @@ function Home() {
           <MainContent>
             <ReportSection>
               <PieWrapper>
-                <h3>Budget Divisions</h3>
-                <PieChart colors={pieData}>
-                  <div>{totalSpent} DA</div>
-                </PieChart>
+                <h3>Budget by Article</h3>
+                <Doughnut data={pieData} options={pieOptions} width={100} height={100} />
                 <Summary>
-                  <p>Total Budget: {totalBudget} DA</p>
-                  <p>Remaining Budget: {remaining} DA</p>
+                  <SummaryItem>Total Budget: {totalBudget.toFixed(2)} DA</SummaryItem>
                 </Summary>
               </PieWrapper>
-              <Legend>
-                {pieData.map((item) => (
-                  <LegendItem key={item.name} color={item.color}>
-                    <span /> {item.name} - {item.amount} DA
-                  </LegendItem>
-                ))}
-              </Legend>
-            </ReportSection>
+              <LegendContainer>
+                <Legend>
+                  {displayedArticles.map((article) => (
+                    <LegendItem key={article.id} color={`hsl(${(articles.findIndex(a => a.id === article.id) * 57) % 360}, 70%, 50%)`}>
+                      <LegendHeader onClick={() => toggleArticle(article.id)}>
+                        <div style={{ display: "flex", alignItems: "center",marginBottom:8 }}>
+                          <span />
+                          <Span
+                            style={{
+                              backgroundColor: 'white',
+                              width: '100%',
+                              height:'fit-content'
+                            }}
+                          >{article.name} - {article.spent.toFixed(2)} DA</Span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
 
-            <TransactionsSection>
-              <h3>Transactions</h3>
-              {Object.entries(groupedNotifications).map(([date, notifs]) => (
-                <TransactionGroup key={date}>
-                  <h4>{date === today ? "Today" : date === yesterday ? "Yesterday" : date}</h4>
-                  {notifs.map((notif) => (
-                    <TransactionItem key={notif.id} $title={notif.title}>
-                      <strong>{notif.title}</strong>
-                      <p>
-                        {notif.content}
-                        {notif.amount && <Amount title={notif.title}>{parseFloat(notif.amount).toFixed(2)} DA</Amount>}
-                      </p>
-                      <small>{new Date(notif.created_at).toLocaleString()}</small>
-                    </TransactionItem>
+                          {article.hasDivisions && (
+                            expandedArticles[article.id] ? <FaChevronUp size={12} /> : <FaChevronDown size={12} />
+                          )}
+                        </div>
+                      </LegendHeader>
+                      {article.hasDivisions && (
+                        <>
+                          <ProgressBar>
+                            <Progress percent={article.percentRemaining} />
+                          </ProgressBar>
+                          <SousarticleList visible={expandedArticles[article.id]}>
+                            {getSousarticlesForArticle(article.id).map((sa) => (
+                              <SousarticleItem key={sa.id}>
+                                <span />
+                                <span
+                                  style={{
+                                    backgroundColor: 'white',
+                                    width: '100%'
+                                  }}
+                                >{sa.name} - Spent: {sa.spent.toFixed(2)} DA</span>
+
+                              </SousarticleItem>
+                            ))}
+                          </SousarticleList>
+                        </>
+                      )}
+                    </LegendItem>
                   ))}
-                </TransactionGroup>
-              ))}
-            </TransactionsSection>
+                </Legend>
+                {articles.length > contributingArticles.length && (
+                  <ShowMoreButton onClick={() => setShowAllArticles(!showAllArticles)}>
+                    {showAllArticles ? "Show Less" : "Show More"}
+                  </ShowMoreButton>
+                )}
+              </LegendContainer>
+            </ReportSection>
+            <div
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'start',
+                justifyContent: 'center',
+                gap: 20,
+
+              }}
+            >
+
+              <TransactionsSection>
+                <h3>Transactions</h3>
+                {Object.entries(groupedNotifications).map(([date, notifs]) => (
+                  <TransactionGroup key={date}>
+                    <h4>{date === today ? "Today" : date === yesterday ? "Yesterday" : date}</h4>
+                    {notifs.map((notif) => (
+                      <TransactionItem key={notif.id} $title={notif.title}>
+                        <strong>{notif.title}</strong>
+                        <p>
+                          {notif.content}
+                          {notif.amount && <Amount title={notif.title}>{parseFloat(notif.amount).toFixed(2)} DA</Amount>}
+                        </p>
+                        <small>{new Date(notif.created_at).toLocaleString()}</small>
+                      </TransactionItem>
+                    ))}
+                  </TransactionGroup>
+                ))}
+              </TransactionsSection>
+
+              <Summary>
+                <h3>Budget Summary</h3>
+                <SummaryItem>Total Transactions: {budgets.length + budgetDivisions.length} </SummaryItem>
+                <SummaryItem>Total Budget: {totalBudget.toFixed(2)} DA</SummaryItem>
+                <SummaryItem>Total Spent: {totalSpent.toFixed(2)} DA</SummaryItem>
+                <SummaryItem>Total Remaining: {remaining.toFixed(2)} DA</SummaryItem>
+
+              </Summary>
+            </div>
+
+
           </MainContent>
         </Content>
       </Container>

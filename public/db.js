@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS sousarticles (
 CREATE TABLE IF NOT EXISTS budgets (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   year INTEGER NOT NULL,
-  type TEXT DEFAULT 'initial',
+  type TEXT NOT NULL CHECK(type IN ('initial', 'additional')),
   total_amount REAL NOT NULL,
   spent REAL DEFAULT 0.0,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS budget_divisions (
   budget_id INTEGER NOT NULL,
   sousarticle_id INTEGER NOT NULL,
   amount REAL NOT NULL DEFAULT 0,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(budget_id) REFERENCES budgets(id) ON DELETE CASCADE,
   FOREIGN KEY(sousarticle_id) REFERENCES sousarticles(id) ON DELETE CASCADE
 );
@@ -151,7 +152,6 @@ const data = [
   ["8", "Renouvellement des équipements scientifique et informatique"],
 ];
 
-// Helper to run db.run with promise
 function runAsync(statement, params) {
   return new Promise((resolve, reject) => {
     statement.run(params, function (err) {

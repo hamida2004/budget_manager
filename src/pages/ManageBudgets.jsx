@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import styled from "styled-components";
@@ -37,22 +36,13 @@ const BudgetItem = styled.div`
   margin-bottom: 10px;
 `;
 
-
-
 const ManageBudgets = () => {
   const { budgets, totalBudget, refreshBudgets } = useBudget();
   const [form, setForm] = useState({ year: "", total_amount: "", type: "initial", spent: 0 });
-  const [Budgets, setBudgets] = useState([])
 
-  const fetchBudgets = async () => {
-    const b = await window.api.getBudgets()
-    setBudgets(b)
-    console.log(b)
-  }
   useEffect(() => {
-    fetchBudgets()
-  }, [])
-
+    refreshBudgets();
+  }, [refreshBudgets]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -61,18 +51,17 @@ const ManageBudgets = () => {
         alert("An initial budget already exists for this year.");
         return;
       }
-      const b = await window.api.addBudget({
+      await window.api.addBudget({
         ...form,
         total_amount: parseFloat(form.total_amount) || 0,
       });
 
       await window.api.addNotification({
         title: "New Budget Added",
-        content: `A new budget of ${parseFloat(form.total_amount).toFixed(2)} DA of type ${form.type} was added .`,
-        amount: form.total_amount
+        content: `A new budget of ${parseFloat(form.total_amount).toFixed(2)} DA of type ${form.type} was added.`,
+        amount: parseFloat(form.total_amount),
       });
       refreshBudgets();
-
       setForm({ year: "", total_amount: "", type: "initial", spent: 0 });
     } catch (error) {
       console.error("Error adding budget:", error);
@@ -156,7 +145,6 @@ const ManageBudgets = () => {
           <p>No budgets found.</p>
         )}
       </Section>
-
 
       <Link to="/">Go Back</Link>
     </Container>
