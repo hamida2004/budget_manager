@@ -1,18 +1,21 @@
 import React, { createContext, useContext, useState } from "react";
 
-// 1. إنشاء الـ Context
 const UserContext = createContext();
 
-// 2. مزوّد الـ Context
 export const UserProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    const storedUser = localStorage.getItem("user");
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
 
   const login = (userData) => {
     setUser(userData);
+    localStorage.setItem("user", JSON.stringify(userData));
   };
 
   const logout = () => {
     setUser(null);
+    localStorage.removeItem("user");
   };
 
   return (
@@ -22,5 +25,4 @@ export const UserProvider = ({ children }) => {
   );
 };
 
-// 3. هوك للاستخدام السهل
 export const useUser = () => useContext(UserContext);

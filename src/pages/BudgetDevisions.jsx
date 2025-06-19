@@ -91,7 +91,7 @@ const BudgetDevisions = () => {
   const { addExpense, deleteExpense } = useBudget();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chapters, setChapters] = useState([]);
-  const [wilaya, setWilaya] = useState('')
+  const [wilaya, setWilaya] = useState('');
   const [articles, setArticles] = useState([]);
   const [sousarticles, setSousarticles] = useState([]);
   const [openChapters, setOpenChapters] = useState({});
@@ -103,6 +103,8 @@ const BudgetDevisions = () => {
   const [newItemName, setNewItemName] = useState({});
   const [budgets, setBudgets] = useState([]);
   const [budgetDivisions, setBudgetDivisions] = useState([]);
+  const [newChapterName, setNewChapterName] = useState("");
+  const [showChapterInput, setShowChapterInput] = useState(false);
 
   const wilayas = [
     { id: 1, wilaya: "Adrar" },
@@ -164,9 +166,10 @@ const BudgetDevisions = () => {
     { id: 57, wilaya: "El M'Ghair" },
     { id: 58, wilaya: "El Menia" },
   ];
+
   const findWilaya = (id) => {
-    const wilaya = wilayas.find((w) => w.id === id);
-    setWilaya(wilaya);
+    const wilaya = wilayas.find((w) => w.id === parseInt(id));
+    setWilaya(wilaya ? wilaya.wilaya : '');
   };
 
   const chapterStyles = {
@@ -198,6 +201,16 @@ const BudgetDevisions = () => {
     }
   };
 
+  const fetchLaboratory = async () => {
+    try {
+      const lab = await window.api.getLaboratory();
+      setLaboratory(lab[0] || {});
+      if (lab[0]?.wilaya) findWilaya(lab[0].wilaya);
+    } catch (error) {
+      console.error("Error fetching laboratory:", error);
+    }
+  };
+
   const getSousArticleName = (id) => {
     const article = sousarticles.find((a) => a.id === id);
     return article ? article.name : "غير معروف";
@@ -218,14 +231,11 @@ const BudgetDevisions = () => {
         fetchLaboratory();
         fetchBudgets();
         fetchBudgetDivisions();
-
       } catch (error) {
         console.error("Error fetching data:", error);
         setError("Failed to load budget data.");
       }
     })();
-    console.log('///', budgetDivisions)
-
   }, [user, navigate]);
 
   const totalBudget = budgets.reduce((sum, budget) => sum + (budget.total_amount || 0), 0);
@@ -234,7 +244,6 @@ const BudgetDevisions = () => {
 
   function generatePDF() {
     try {
-      findWilaya(laboratory.wilaya)
       const pdf = new jsPDF("p", "pt", "a4");
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
@@ -243,10 +252,9 @@ const BudgetDevisions = () => {
       const tableStartY = 160;
       let y = tableStartY;
       const tableWidth = pageWidth - 2 * margin;
-      const colWidths = [tableWidth * 0.6, tableWidth * 0.2, tableWidth * 0.2]; // Libellé: 60%, Amount (Annual): 20%, Amount (Additional): 20%
+      const colWidths = [tableWidth * 0.6, tableWidth * 0.2, tableWidth * 0.2];
       let isFirstPage = true;
 
-      // Function to add header on first page only
       const addHeader = () => {
         if (!isFirstPage) return;
         pdf.setFont("Helvetica", "normal");
@@ -261,7 +269,6 @@ const BudgetDevisions = () => {
         }
       };
 
-      // Function to check for page break
       const checkPageBreak = (additionalHeight) => {
         if (y + additionalHeight > pageHeight - margin) {
           pdf.addPage();
@@ -272,7 +279,6 @@ const BudgetDevisions = () => {
         return false;
       };
 
-      // Function to draw table row
       const drawTableRow = (label, amountAnnual, amountAdditional, indent = 0, isBold = false) => {
         checkPageBreak(lineHeight + 10);
         pdf.setFont("Helvetica", isBold ? "bold" : "normal");
@@ -280,13 +286,12 @@ const BudgetDevisions = () => {
         pdf.text(label, margin + indent, y + 10, { maxWidth: colWidths[0] - indent });
         pdf.text(amountAnnual, margin + colWidths[0] + colWidths[1] - 5, y + 10, { align: "right" });
         pdf.text(amountAdditional, margin + tableWidth - 5, y + 10, { align: "right" });
-        pdf.rect(margin, y, colWidths[0], lineHeight); // Libellé cell
-        pdf.rect(margin + colWidths[0], y, colWidths[1], lineHeight); // Amount (Annual) cell
-        pdf.rect(margin + colWidths[0] + colWidths[1], y, colWidths[2], lineHeight); // Amount (Additional) cell
+        pdf.rect(margin, y, colWidths[0], lineHeight);
+        pdf.rect(margin + colWidths[0], y, colWidths[1], lineHeight);
+        pdf.rect(margin + colWidths[0] + colWidths[1], y, colWidths[2], lineHeight);
         y += lineHeight;
       };
 
-      // Draw table header
       addHeader();
       pdf.setFont("Helvetica", "bold");
       pdf.setFontSize(10);
@@ -298,14 +303,26 @@ const BudgetDevisions = () => {
       pdf.rect(margin + colWidths[0] + colWidths[1], y, colWidths[2], lineHeight);
       y += lineHeight;
 
-      // Table Data
       let grandTotal = 0;
       chapters.forEach((chapter) => {
         const chapterArticles = articles.filter((ar) => ar.chapter_id === chapter.id);
-        let chapterTotal = 0;
+        let chapterTotal = calculateChapterTotal(chapter.id);
 
-        // Chapter Row
         drawTableRow(chapter.name, "", "", 10, true);
+
+        budgets.forEach((budget) => {
+          const division = budgetDivisions.find(
+            (div) => div.chapter_id === chapter.id && div.budget_id === budget.id
+          );
+          const amount = division ? parseFloat(division.amount) : 0;
+          const formattedAmount = `$${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          drawTableRow(
+            `Budget ${budget.id}`,
+            budget.id === 1 ? formattedAmount : "",
+            budget.id !== 1 ? formattedAmount : "",
+            20
+          );
+        });
 
         if (chapterArticles.length === 0) {
           drawTableRow("", "0.00", "0.00");
@@ -313,10 +330,22 @@ const BudgetDevisions = () => {
           chapterArticles.forEach((article) => {
             const articleSousarticles = sousarticles.filter((sa) => sa.article_id === article.id);
             const articleTotal = calculateArticleTotal(article.id);
-            chapterTotal += articleTotal;
 
-            // Article Row
             drawTableRow(article.name, "", "", 20);
+
+            budgets.forEach((budget) => {
+              const division = budgetDivisions.find(
+                (div) => div.article_id === article.id && div.budget_id === budget.id
+              );
+              const amount = division ? parseFloat(division.amount) : 0;
+              const formattedAmount = `$${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+              drawTableRow(
+                `Budget ${budget.id}`,
+                budget.id === 1 ? formattedAmount : "",
+                budget.id !== 1 ? formattedAmount : "",
+                30
+              );
+            });
 
             if (articleSousarticles.length === 0) {
               drawTableRow("", "0.00", "0.00");
@@ -333,12 +362,10 @@ const BudgetDevisions = () => {
                 const formattedAmountAnnual = `$${amountAnnual.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 const formattedAmountAdditional = `$${amountAdditional.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-                // Sousarticle Row
                 drawTableRow(sousarticle.name, formattedAmountAnnual, formattedAmountAdditional, 40);
               });
             }
 
-            // Article Total
             if (articleSousarticles.length > 0) {
               drawTableRow(
                 "Total Partiel",
@@ -351,7 +378,6 @@ const BudgetDevisions = () => {
           });
         }
 
-        // Chapter Total
         drawTableRow(
           "Total Partiel",
           "",
@@ -362,7 +388,6 @@ const BudgetDevisions = () => {
         grandTotal += chapterTotal;
       });
 
-      // Grand Total
       drawTableRow(
         "TOTAL GENERAL DU BUDGET",
         "",
@@ -379,15 +404,6 @@ const BudgetDevisions = () => {
     }
   }
 
-  const fetchLaboratory = async () => {
-    try {
-      const lab = await window.api.getLaboratory();
-      setLaboratory(lab[0] || {});
-    } catch (error) {
-      console.error("Error fetching laboratory:", error);
-    }
-  };
-
   const toggleChapter = (id) => {
     setOpenChapters((prev) => ({ ...prev, [id]: !prev[id] }));
   };
@@ -396,19 +412,43 @@ const BudgetDevisions = () => {
     setOpenArticles((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const deleteChapter = async (id) => {
+  const addChapter = async () => {
+    if (!newChapterName || newChapterName.trim() === "") {
+      setError("Please enter a valid chapter name.");
+      return;
+    }
     try {
-      await window.api.deleteChapter(id);
-      setChapters((prev) => prev.filter((ch) => ch.id !== id));
+      const newChapter = { name: newChapterName.trim() };
+      const result = await window.api.addChapter(newChapter);
+      setChapters((prev) => [...prev, result]);
+      setNewChapterName("");
+      setShowChapterInput(false);
     } catch (error) {
-      console.error("Error deleting chapter:", error);
-      setError("Failed to delete chapter.");
+      console.error("Error adding chapter:", error);
+      setError("Failed to add chapter.");
     }
   };
 
-  const addItem = async (articleId, name) => {
+  const addArticle = async (chapterId, name) => {
     if (!name || name.trim() === "") {
-      setError("Please enter a valid item name.");
+      setError("Please enter a valid article name.");
+      return;
+    }
+    try {
+      const newArticle = { name: name.trim(), chapter_id: chapterId };
+      const result = await window.api.addArticle(newArticle);
+      setArticles((prev) => [...prev, result]);
+      setAddInputVisible((prev) => ({ ...prev, [`chapter_${chapterId}`]: false }));
+      setNewItemName((prev) => ({ ...prev, [`chapter_${chapterId}`]: "" }));
+    } catch (error) {
+      console.error("Error adding article:", error);
+      setError("Failed to add article.");
+    }
+  };
+
+  const addSousarticle = async (articleId, name) => {
+    if (!name || name.trim() === "") {
+      setError("Please enter a valid sousarticle name.");
       return;
     }
     try {
@@ -418,36 +458,51 @@ const BudgetDevisions = () => {
       setAddInputVisible((prev) => ({ ...prev, [articleId]: false }));
       setNewItemName((prev) => ({ ...prev, [articleId]: "" }));
     } catch (error) {
-      console.error("Error adding item:", error);
-      setError("Failed to add item.");
+      console.error("Error adding sousarticle:", error);
+      setError("Failed to add sousarticle.");
     }
   };
 
-  const toggleAddInput = (articleId) => {
+  const toggleAddInput = (id, type = 'sousarticle') => {
+    const key = type === 'article' ? `chapter_${id}` : id;
     setAddInputVisible((prev) => ({
       ...prev,
-      [articleId]: !prev[articleId],
+      [key]: !prev[key],
     }));
-    if (!addInputVisible[articleId]) {
-      setNewItemName((prev) => ({ ...prev, [articleId]: "" }));
+    if (!addInputVisible[key]) {
+      setNewItemName((prev) => ({ ...prev, [key]: "" }));
     }
   };
 
-  const handleNewItemName = (articleId, value) => {
-    setNewItemName((prev) => ({ ...prev, [articleId]: value }));
+  const handleNewItemName = (id, value, type = 'sousarticle') => {
+    const key = type === 'article' ? `chapter_${id}` : id;
+    setNewItemName((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const deleteChapter = async (id) => {
+    try {
+      await window.api.deleteChapter(id);
+      setChapters((prev) => prev.filter((ch) => ch.id !== id));
+      setArticles((prev) => prev.filter((ar) => ar.chapter_id !== id));
+      setSousarticles((prev) => prev.filter((sa) => !articles.some(ar => ar.id === sa.article_id && ar.chapter_id === id)));
+    } catch (error) {
+      console.error("Error deleting chapter:", error);
+      setError("Failed to delete chapter.");
+    }
   };
 
   const deleteArticle = async (id) => {
     try {
       await window.api.deleteArticle(id);
       setArticles((prev) => prev.filter((ar) => ar.id !== id));
+      setSousarticles((prev) => prev.filter((sa) => sa.article_id !== id));
     } catch (error) {
       console.error("Error deleting article:", error);
       setError("Failed to delete article.");
     }
   };
 
-  const deleteItem = async (id) => {
+  const deleteSousarticle = async (id) => {
     try {
       await window.api.deleteSousarticle(id);
       setSousarticles((prev) => prev.filter((sa) => sa.id !== id));
@@ -457,22 +512,24 @@ const BudgetDevisions = () => {
       }
       fetchBudgetDivisions();
     } catch (error) {
-      console.error("Error deleting item:", error);
-      setError("Failed to delete item.");
+      console.error("Error deleting sousarticle:", error);
+      setError("Failed to delete sousarticle.");
     }
   };
 
-  const handleExpenseInput = (sousarticleId, budgetId, value) => {
+  const handleExpenseInput = (id, budgetId, value, type = 'sousarticle') => {
+    const key = type === 'chapter' ? `chapter_${id}` : type === 'article' ? `article_${id}` : id;
     setExpenseInputs((prev) => ({
       ...prev,
-      [`${sousarticleId}_${budgetId}`]: parseFloat(value) || 0,
+      [`${key}_${budgetId}`]: parseFloat(value) || 0,
     }));
   };
 
-  const saveExpense = async (e, sousarticleId, articleId, name, budgetId) => {
+  const saveExpense = async (e, id, parentId, name, budgetId, type = 'sousarticle') => {
     e.preventDefault();
     setError("");
-    const amount = expenseInputs[`${sousarticleId}_${budgetId}`];
+    const key = type === 'chapter' ? `chapter_${id}` : type === 'article' ? `article_${id}` : id;
+    const amount = expenseInputs[`${key}_${budgetId}`];
     const budget = budgets.find((b) => b.id === budgetId);
 
     if (!amount || amount <= 0) {
@@ -491,16 +548,18 @@ const BudgetDevisions = () => {
     }
 
     try {
-      await window.api.addBudgetDivision({
-        budget_id: budgetId,
-        sousarticle_id: sousarticleId,
-        amount
-      });
+      const divisionData = { budget_id: budgetId, amount };
+      if (type === 'chapter') divisionData.chapter_id = id;
+      else if (type === 'article') divisionData.article_id = id;
+      else divisionData.sousarticle_id = id;
+
+      await window.api.addBudgetDivision(divisionData);
 
       const newSpent = budget.spent + amount;
       await window.api.updateBudgets({
         id: budgetId,
         year: budget.year,
+        type: budget.type,
         total_amount: budget.total_amount,
         spent: newSpent,
       });
@@ -511,7 +570,13 @@ const BudgetDevisions = () => {
         )
       );
 
-      await addExpense({ sousarticle_id: sousarticleId, article_id: articleId, name, amount });
+      await addExpense({
+        sousarticle_id: type === 'sousarticle' ? id : undefined,
+        article_id: type === 'article' ? id : parentId,
+        chapter_id: type === 'chapter' ? id : undefined,
+        name,
+        amount
+      });
 
       await window.api.addNotification({
         title: "New Expense Added",
@@ -519,29 +584,50 @@ const BudgetDevisions = () => {
         amount: amount,
       });
 
-      setExpenseInputs((prev) => ({ ...prev, [`${sousarticleId}_${budgetId}`]: 0 }));
-
+      setExpenseInputs((prev) => ({ ...prev, [`${key}_${budgetId}`]: 0 }));
       fetchBudgetDivisions();
     } catch (error) {
-      return
       console.error("Error saving expense:", error);
       setError(`Failed to save expense: ${error.message}`);
     }
   };
 
+  const calculateChapterTotal = (chapterId) => {
+    const chapterDivisions = budgetDivisions
+      .filter((div) => div.chapter_id === chapterId)
+      .reduce((acc, div) => acc + (div.amount || 0), 0);
+    const articleDivisions = articles
+      .filter((ar) => ar.chapter_id === chapterId)
+      .reduce((acc, ar) => acc + calculateArticleTotal(ar.id), 0);
+    return chapterDivisions + articleDivisions;
+  };
+
   const calculateArticleTotal = (articleId) => {
-    return budgetDivisions
+    const articleDivisions = budgetDivisions
+      .filter((div) => div.article_id === articleId)
+      .reduce((acc, div) => acc + (div.amount || 0), 0);
+    const sousarticleDivisions = budgetDivisions
       .filter((div) => sousarticles.find((sa) => sa.id === div.sousarticle_id && sa.article_id === articleId))
       .reduce((acc, div) => acc + (div.amount || 0), 0);
+    return articleDivisions + sousarticleDivisions;
   };
 
-  const calculateItemPrice = (subarticleId, budgetId) => {
-    const division = budgetDivisions.find((div) => div.sousarticle_id === subarticleId && div.budget_id === budgetId);
-    return division ? division.amount : expenseInputs[`${subarticleId}_${budgetId}`] || 0;
+  const calculateItemPrice = (id, budgetId, type = 'sousarticle') => {
+    const key = type === 'chapter' ? `chapter_${id}` : type === 'article' ? `article_${id}` : id;
+    const division = budgetDivisions.find((div) =>
+      (type === 'chapter' && div.chapter_id === id) ||
+      (type === 'article' && div.article_id === id) ||
+      (type === 'sousarticle' && div.sousarticle_id === id)
+      && div.budget_id === budgetId);
+    return division ? division.amount : expenseInputs[`${key}_${budgetId}`] || 0;
   };
 
-  const hasDivision = (subarticleId, budgetId) => {
-    return budgetDivisions.some((div) => div.sousarticle_id === subarticleId && div.budget_id === budgetId);
+  const hasDivision = (id, budgetId, type = 'sousarticle') => {
+    return budgetDivisions.some((div) =>
+      (type === 'chapter' && div.chapter_id === id) ||
+      (type === 'article' && div.article_id === id) ||
+      (type === 'sousarticle' && div.sousarticle_id === id)
+      && div.budget_id === budgetId);
   };
 
   return (
@@ -592,7 +678,50 @@ const BudgetDevisions = () => {
         </BudgetSummary>
 
         <Section>
-          <h3>Budget Division</h3>
+          <div
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0px 20px'
+            }}
+          >
+            <h3>Budget Division</h3>
+            {showChapterInput ? (
+              <AddInputContainer style={{ marginBottom: 20 }}>
+                <AddInput
+                  type="text"
+                  value={newChapterName}
+                  onChange={(e) => setNewChapterName(e.target.value)}
+                  placeholder="Enter article name"
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") addChapter();
+                  }}
+                />
+                <MdSave
+                  size={20}
+                  color="#001A82"
+                  onClick={addChapter}
+                />
+                <MdDelete
+                  size={20}
+                  color="red"
+                  onClick={() => setShowChapterInput(false)}
+                />
+              </AddInputContainer>
+            ) : (
+              <MdAdd
+                size={24}
+                color="green"
+                onClick={() => setShowChapterInput(true)}
+                style={{
+                  cursor: 'pointer'
+                }}
+
+              />
+            )}
+          </div>
           {chapters.map((ch) => {
             const { icon: Icon, color } = chapterStyles[ch.name] || { icon: FaBars, color: "#95a5a6" };
             return (
@@ -629,11 +758,12 @@ const BudgetDevisions = () => {
                           .slice(0, 2)
                           .map((ele) => ele.name)
                           .join(",")}{" "}
-                        {articles.filter((ar) => ar.chapter_id === ch.id).length > 3 ? "..." : ""}
+                        {articles.filter((ar) => ar.chapter_id === ch.id).length > 2 ? "..." : ""}
                       </span>
                     </div>
                   </ChapterTitle>
-                  <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+                    <p>Article Total: {calculateChapterTotal(ch.id).toFixed(2)} DA</p>
                     <MdDelete
                       size={20}
                       color="red"
@@ -642,10 +772,77 @@ const BudgetDevisions = () => {
                         deleteChapter(ch.id);
                       }}
                     />
+                    {addInputVisible[`chapter_${ch.id}`] ? (
+                      <AddInputContainer style={{ margin: "8px 20px" }}>
+                        <AddInput
+                          type="text"
+                          value={newItemName[`chapter_${ch.id}`] || ""}
+                          onChange={(e) => handleNewItemName(ch.id, e.target.value, 'article')}
+                          placeholder="Enter subarticle name"
+                          onKeyPress={(e) => {
+                            if (e.key === "Enter") {
+                              addArticle(ch.id, newItemName[`chapter_${ch.id}`]);
+                            }
+                          }}
+                        />
+                        <MdSave
+                          size={20}
+                          color="#001A82"
+                          onClick={() => addArticle(ch.id, newItemName[`chapter_${ch.id}`])}
+                        />
+                        <MdDelete
+                          size={20}
+                          color="red"
+                          onClick={() => toggleAddInput(ch.id, 'article')}
+                        />
+                      </AddInputContainer>
+                    ) : (
+                      <MdAdd
+                        size={24}
+                        color="green"
+                        onClick={() => toggleAddInput(ch.id, 'article')}
+                        style={{
+                          cursor: 'pointer'
+                        }}
+                      />
+                    )}
                   </div>
                 </ToggleButton>
                 {openChapters[ch.id] && (
                   <List>
+                    <div
+                    >
+                      {budgets.map((budget) => (
+                        hasDivision(ch.id, budget.id, 'chapter') ? (
+                          <div key={budget.id} style={{ display: "flex", alignItems: "center", gap: 10, margin: "8px 0" }}>
+                            <span>Budget {budget.id}:</span>
+                            <span>{calculateItemPrice(ch.id, budget.id, 'chapter').toFixed(2)} DA</span>
+                          </div>
+                        ) : budget.total_amount - budget.spent > 0 && (
+                          <div key={budget.id} style={{ display: "flex", alignItems: "center", gap: 10, margin: "8px 0" }}>
+                            <span>Budget {budget.id}:</span>
+                            <input
+                              type="number"
+                              style={{
+                                width: 100,
+                                borderColor: "#001A82",
+                                borderWidth: 1,
+                                borderRadius: 8,
+                              }}
+                              value={expenseInputs[`chapter_${ch.id}_${budget.id}`] || ""}
+                              onChange={(e) => handleExpenseInput(ch.id, budget.id, e.target.value, 'chapter')}
+                            />
+                            <MdSave
+                              size={20}
+                              color="#001A82"
+                              onClick={(e) => saveExpense(e, ch.id, null, ch.name, budget.id, 'chapter')}
+                            />
+                          </div>
+                        )
+                      ))}
+
+                    </div>
+
                     {articles
                       .filter((ar) => ar.chapter_id === ch.id)
                       .map((ar) => (
@@ -666,7 +863,7 @@ const BudgetDevisions = () => {
                               {ar.name}
                             </div>
                             <div>
-                              <p>Partial Total: {calculateArticleTotal(ar.id).toFixed(2)} DA</p>
+                              <p>Subarticle Total: {calculateArticleTotal(ar.id).toFixed(2)} DA</p>
                             </div>
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20 }}>
                               {addInputVisible[ar.id] ? (
@@ -675,17 +872,17 @@ const BudgetDevisions = () => {
                                     type="text"
                                     value={newItemName[ar.id] || ""}
                                     onChange={(e) => handleNewItemName(ar.id, e.target.value)}
-                                    placeholder="Enter item name"
+                                    placeholder="Enter sousarticle name"
                                     onKeyPress={(e) => {
                                       if (e.key === "Enter") {
-                                        addItem(ar.id, newItemName[ar.id]);
+                                        addSousarticle(ar.id, newItemName[ar.id]);
                                       }
                                     }}
                                   />
                                   <MdSave
                                     size={20}
                                     color="#001A82"
-                                    onClick={() => addItem(ar.id, newItemName[ar.id])}
+                                    onClick={() => addSousarticle(ar.id, newItemName[ar.id])}
                                   />
                                   <MdDelete
                                     size={20}
@@ -718,6 +915,44 @@ const BudgetDevisions = () => {
                           </ToggleButton>
                           {openArticles[ar.id] && (
                             <List>
+                              <div
+                                style={{
+                                  boxShadow: "0px 0px 5px rgba(0,0,0,0.2)",
+                                  borderRadius: 8,
+                                  margin: "8px 20px",
+                                  padding: "8px 20px",
+                                  display: 'none'
+                                }}
+                              >
+                                {budgets.map((budget) => (
+                                  hasDivision(ar.id, budget.id, 'article') ? (
+                                    <div key={budget.id} style={{ display: "flex", alignItems: "center", gap: 10, margin: "8px 0" }}>
+                                      <span>Budget {budget.id}:</span>
+                                      <span>{calculateItemPrice(ar.id, budget.id, 'article').toFixed(2)} DA</span>
+                                    </div>
+                                  ) : budget.total_amount - budget.spent > 0 && (
+                                    <div key={budget.id} style={{ display: "flex", alignItems: "center", gap: 10, margin: "8px 0" }}>
+                                      <span>Budget {budget.id}:</span>
+                                      <input
+                                        type="number"
+                                        style={{
+                                          width: 100,
+                                          borderColor: "#001A82",
+                                          borderWidth: 1,
+                                          borderRadius: 8,
+                                        }}
+                                        value={expenseInputs[`article_${ar.id}_${budget.id}`] || ""}
+                                        onChange={(e) => handleExpenseInput(ar.id, budget.id, e.target.value, 'article')}
+                                      />
+                                      <MdSave
+                                        size={20}
+                                        color="#001A82"
+                                        onClick={(e) => saveExpense(e, ar.id, ar.chapter_id, ar.name, budget.id, 'article')}
+                                      />
+                                    </div>
+                                  )
+                                ))}
+                              </div>
                               {sousarticles
                                 .filter((sa) => sa.article_id === ar.id)
                                 .map((sa) => (
@@ -736,10 +971,10 @@ const BudgetDevisions = () => {
                                     <div>{sa.name}</div>
                                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                                       {budgets.map((budget) => (
-                                        hasDivision(sa.id, budget.id) ? (
+                                        hasDivision(sa.id, budget.id, 'sousarticle') ? (
                                           <div key={budget.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                                             <span>Budget {budget.id}:</span>
-                                            <span>{calculateItemPrice(sa.id, budget.id).toFixed(2)} DA</span>
+                                            <span>{calculateItemPrice(sa.id, budget.id, 'sousarticle').toFixed(2)} DA</span>
                                           </div>
                                         ) : budget.total_amount - budget.spent > 0 && (
                                           <div key={budget.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -753,12 +988,12 @@ const BudgetDevisions = () => {
                                                 borderRadius: 8,
                                               }}
                                               value={expenseInputs[`${sa.id}_${budget.id}`] || ""}
-                                              onChange={(e) => handleExpenseInput(sa.id, budget.id, e.target.value)}
+                                              onChange={(e) => handleExpenseInput(sa.id, budget.id, e.target.value, 'sousarticle')}
                                             />
                                             <MdSave
                                               size={20}
                                               color="#001A82"
-                                              onClick={(e) => saveExpense(e, sa.id, ar.id, sa.name, budget.id)}
+                                              onClick={(e) => saveExpense(e, sa.id, ar.id, sa.name, budget.id, 'sousarticle')}
                                             />
                                           </div>
                                         )
@@ -767,7 +1002,7 @@ const BudgetDevisions = () => {
                                     <MdDelete
                                       size={20}
                                       color="red"
-                                      onClick={() => deleteItem(sa.id)}
+                                      onClick={() => deleteSousarticle(sa.id)}
                                     />
                                   </li>
                                 ))}
