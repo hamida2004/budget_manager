@@ -1,3 +1,6 @@
+
+
+
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
@@ -5,7 +8,6 @@ import { FaBars, FaMoneyBillWave, FaFlask, FaTools, FaCar, FaLightbulb, FaUserTi
 import { MdAdd, MdDelete, MdExpandLess, MdExpandMore, MdSave } from "react-icons/md";
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
-import html2canvas from "html2canvas";
 import Nav from "../components/nav";
 import SideBar from "../components/SideBar";
 import Button from "../components/button";
@@ -77,6 +79,7 @@ const ChapterTitle = styled.div`
   gap: 40px;
 `;
 
+
 const BudgetSummary = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -84,6 +87,66 @@ const BudgetSummary = styled.div`
   margin-top: 20px;
   width: 100%;
 `;
+const wilayas = [
+  { id: 1, wilaya: "Adrar" },
+  { id: 2, wilaya: "Chlef" },
+  { id: 3, wilaya: "Laghouat" },
+  { id: 4, wilaya: "Oum El Bouaghi" },
+  { id: 5, wilaya: "Batna" },
+  { id: 6, wilaya: "Béjaïa" },
+  { id: 7, wilaya: "Biskra" },
+  { id: 8, wilaya: "Béchar" },
+  { id: 9, wilaya: "Blida" },
+  { id: 10, wilaya: "Bouira" },
+  { id: 11, wilaya: "Tamanrasset" },
+  { id: 12, wilaya: "Tébessa" },
+  { id: 13, wilaya: "Tlemcen" },
+  { id: 14, wilaya: "Tiaret" },
+  { id: 15, wilaya: "Tizi Ouzou" },
+  { id: 16, wilaya: "Alger" },
+  { id: 17, wilaya: "Djelfa" },
+  { id: 18, wilaya: "Jijel" },
+  { id: 19, wilaya: "Sétif" },
+  { id: 20, wilaya: "Saïda" },
+  { id: 21, wilaya: "Skikda" },
+  { id: 22, wilaya: "Sidi Bel Abbès" },
+  { id: 23, wilaya: "Annaba" },
+  { id: 24, wilaya: "Guelma" },
+  { id: 25, wilaya: "Constantine" },
+  { id: 26, wilaya: "Médéa" },
+  { id: 27, wilaya: "Mostaganem" },
+  { id: 28, wilaya: "M'Sila" },
+  { id: 29, wilaya: "Mascara" },
+  { id: 30, wilaya: "Ouargla" },
+  { id: 31, wilaya: "Oran" },
+  { id: 32, wilaya: "El Bayadh" },
+  { id: 33, wilaya: "Illizi" },
+  { id: 34, wilaya: "Bordj Bou Arréridj" },
+  { id: 35, wilaya: "Boumerdès" },
+  { id: 36, wilaya: "El Tarf" },
+  { id: 37, wilaya: "Tindouf" },
+  { id: 38, wilaya: "Tissemsilt" },
+  { id: 39, wilaya: "El Oued" },
+  { id: 40, wilaya: "Khenchela" },
+  { id: 41, wilaya: "Souk Ahras" },
+  { id: 42, wilaya: "Tipaza" },
+  { id: 43, wilaya: "Mila" },
+  { id: 44, wilaya: "Aïn Defla" },
+  { id: 45, wilaya: "Naâma" },
+  { id: 46, wilaya: "Aïn Témouchent" },
+  { id: 47, wilaya: "Ghardaïa" },
+  { id: 48, wilaya: "Relizane" },
+  { id: 49, wilaya: "Timimoun" },
+  { id: 50, wilaya: "Bordj Badji Mokhtar" },
+  { id: 51, wilaya: "Ouled Djellal" },
+  { id: 52, wilaya: "Beni Abbès" },
+  { id: 53, wilaya: "In Salah" },
+  { id: 54, wilaya: "In Guezzam" },
+  { id: 55, wilaya: "Touggourt" },
+  { id: 56, wilaya: "Djanet" },
+  { id: 57, wilaya: "El M'Ghair" },
+  { id: 58, wilaya: "El Menia" },
+];
 
 const BudgetDevisions = () => {
   const { user } = useUser();
@@ -106,66 +169,7 @@ const BudgetDevisions = () => {
   const [newChapterName, setNewChapterName] = useState("");
   const [showChapterInput, setShowChapterInput] = useState(false);
 
-  const wilayas = [
-    { id: 1, wilaya: "Adrar" },
-    { id: 2, wilaya: "Chlef" },
-    { id: 3, wilaya: "Laghouat" },
-    { id: 4, wilaya: "Oum El Bouaghi" },
-    { id: 5, wilaya: "Batna" },
-    { id: 6, wilaya: "Béjaïa" },
-    { id: 7, wilaya: "Biskra" },
-    { id: 8, wilaya: "Béchar" },
-    { id: 9, wilaya: "Blida" },
-    { id: 10, wilaya: "Bouira" },
-    { id: 11, wilaya: "Tamanrasset" },
-    { id: 12, wilaya: "Tébessa" },
-    { id: 13, wilaya: "Tlemcen" },
-    { id: 14, wilaya: "Tiaret" },
-    { id: 15, wilaya: "Tizi Ouzou" },
-    { id: 16, wilaya: "Alger" },
-    { id: 17, wilaya: "Djelfa" },
-    { id: 18, wilaya: "Jijel" },
-    { id: 19, wilaya: "Sétif" },
-    { id: 20, wilaya: "Saïda" },
-    { id: 21, wilaya: "Skikda" },
-    { id: 22, wilaya: "Sidi Bel Abbès" },
-    { id: 23, wilaya: "Annaba" },
-    { id: 24, wilaya: "Guelma" },
-    { id: 25, wilaya: "Constantine" },
-    { id: 26, wilaya: "Médéa" },
-    { id: 27, wilaya: "Mostaganem" },
-    { id: 28, wilaya: "M'Sila" },
-    { id: 29, wilaya: "Mascara" },
-    { id: 30, wilaya: "Ouargla" },
-    { id: 31, wilaya: "Oran" },
-    { id: 32, wilaya: "El Bayadh" },
-    { id: 33, wilaya: "Illizi" },
-    { id: 34, wilaya: "Bordj Bou Arréridj" },
-    { id: 35, wilaya: "Boumerdès" },
-    { id: 36, wilaya: "El Tarf" },
-    { id: 37, wilaya: "Tindouf" },
-    { id: 38, wilaya: "Tissemsilt" },
-    { id: 39, wilaya: "El Oued" },
-    { id: 40, wilaya: "Khenchela" },
-    { id: 41, wilaya: "Souk Ahras" },
-    { id: 42, wilaya: "Tipaza" },
-    { id: 43, wilaya: "Mila" },
-    { id: 44, wilaya: "Aïn Defla" },
-    { id: 45, wilaya: "Naâma" },
-    { id: 46, wilaya: "Aïn Témouchent" },
-    { id: 47, wilaya: "Ghardaïa" },
-    { id: 48, wilaya: "Relizane" },
-    { id: 49, wilaya: "Timimoun" },
-    { id: 50, wilaya: "Bordj Badji Mokhtar" },
-    { id: 51, wilaya: "Ouled Djellal" },
-    { id: 52, wilaya: "Beni Abbès" },
-    { id: 53, wilaya: "In Salah" },
-    { id: 54, wilaya: "In Guezzam" },
-    { id: 55, wilaya: "Touggourt" },
-    { id: 56, wilaya: "Djanet" },
-    { id: 57, wilaya: "El M'Ghair" },
-    { id: 58, wilaya: "El Menia" },
-  ];
+
 
   const findWilaya = (id) => {
     const wilaya = wilayas.find((w) => w.id === parseInt(id));
@@ -241,168 +245,168 @@ const BudgetDevisions = () => {
   const totalBudget = budgets.reduce((sum, budget) => sum + (budget.total_amount || 0), 0);
   const totalSpent = budgets.reduce((sum, budget) => sum + (budget.spent || 0), 0);
   const totalRemaining = totalBudget - totalSpent;
+function generatePDF() {
+  try {
+    findWilaya(laboratory.wilaya);
+    const pdf = new jsPDF("p", "pt", "a4");
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 40;
+    const lineHeight = 15;
+    const tableStartY = 160;
+    let y = tableStartY;
+    const tableWidth = pageWidth - 2 * margin;
+    const colWidths = [tableWidth * 0.6, tableWidth * 0.2, tableWidth * 0.2];
+    let isFirstPage = true;
 
-  function generatePDF() {
-    try {
-      const pdf = new jsPDF("p", "pt", "a4");
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 40;
-      const lineHeight = 15;
-      const tableStartY = 160;
-      let y = tableStartY;
-      const tableWidth = pageWidth - 2 * margin;
-      const colWidths = [tableWidth * 0.6, tableWidth * 0.2, tableWidth * 0.2];
-      let isFirstPage = true;
+    const addHeader = () => {
+      if (!isFirstPage) return;
+      pdf.setFont("Helvetica", "normal");
+      pdf.setFontSize(12);
+      pdf.text("People's Democratic Republic of Algeria", margin, 40);
+      if (laboratory) {
+        pdf.text(`Ministry of Higher Education and Scientific Research`, margin, 60);
+        pdf.text(`${laboratory.univ || "N/A"}`, margin, 80);
+        pdf.text(`Faculty of Exact Science`, margin, 100);
+        pdf.text(`Laboratory: ${laboratory.name || "N/A"}`, margin, 120);
+        pdf.text(`Wilaya: ${wilaya || laboratory.wilaya || "N/A"}`, margin, 140);
+      }
+    };
 
-      const addHeader = () => {
-        if (!isFirstPage) return;
-        pdf.setFont("Helvetica", "normal");
-        pdf.setFontSize(12);
-        pdf.text("People's Democratic Republic of Algeria", margin, 40);
-        if (laboratory) {
-          pdf.text(`Ministry of Higher Education and Scientific Research`, margin, 60);
-          pdf.text(`${laboratory.univ || "N/A"}`, margin, 80);
-          pdf.text(`Faculty of Exact Science`, margin, 100);
-          pdf.text(`Laboratory: ${laboratory.name || "N/A"}`, margin, 120);
-          pdf.text(`Wilaya: ${wilaya || laboratory.wilaya || "N/A"}`, margin, 140);
-        }
-      };
+    const checkPageBreak = (additionalHeight) => {
+      if (y + additionalHeight > pageHeight - margin) {
+        pdf.addPage();
+        y = 60;
+        isFirstPage = false;
+        return true;
+      }
+      return false;
+    };
 
-      const checkPageBreak = (additionalHeight) => {
-        if (y + additionalHeight > pageHeight - margin) {
-          pdf.addPage();
-          y = 60;
-          isFirstPage = false;
-          return true;
-        }
-        return false;
-      };
+    const drawTableRow = (label, amountAnnual, amountAdditional, indent = 0, isBold = false) => {
+      checkPageBreak(lineHeight + 10);
+      const wrappedLabel = pdf.splitTextToSize(label, colWidths[0] - indent);
+      const lineCount = wrappedLabel.length;
+      const rowHeight = lineHeight * lineCount;
 
-      const drawTableRow = (label, amountAnnual, amountAdditional, indent = 0, isBold = false) => {
-        checkPageBreak(lineHeight + 10);
-        pdf.setFont("Helvetica", isBold ? "bold" : "normal");
-        pdf.setFontSize(10);
-        pdf.text(label, margin + indent, y + 10, { maxWidth: colWidths[0] - indent });
-        pdf.text(amountAnnual, margin + colWidths[0] + colWidths[1] - 5, y + 10, { align: "right" });
-        pdf.text(amountAdditional, margin + tableWidth - 5, y + 10, { align: "right" });
-        pdf.rect(margin, y, colWidths[0], lineHeight);
-        pdf.rect(margin + colWidths[0], y, colWidths[1], lineHeight);
-        pdf.rect(margin + colWidths[0] + colWidths[1], y, colWidths[2], lineHeight);
-        y += lineHeight;
-      };
-
-      addHeader();
-      pdf.setFont("Helvetica", "bold");
+      pdf.setFont("Helvetica", isBold ? "bold" : "normal");
       pdf.setFontSize(10);
-      pdf.text("Libellé", margin + 10, y + 10);
-      pdf.text("Amount (Annual)", margin + colWidths[0] + colWidths[1] - 5, y + 10, { align: "right" });
-      pdf.text("Amount (Additional)", margin + tableWidth - 5, y + 10, { align: "right" });
-      pdf.rect(margin, y, colWidths[0], lineHeight);
-      pdf.rect(margin + colWidths[0], y, colWidths[1], lineHeight);
-      pdf.rect(margin + colWidths[0] + colWidths[1], y, colWidths[2], lineHeight);
-      y += lineHeight;
+      pdf.text(wrappedLabel, margin + indent, y + 10, { maxWidth: colWidths[0] - indent });
+      pdf.text(amountAnnual || "0.00 DA", margin + colWidths[0] + colWidths[1] - 5, y + 10, { align: "right" });
+      pdf.text(amountAdditional || "0.00 DA", margin + tableWidth - 5, y + 10, { align: "right" });
 
-      let grandTotal = 0;
-      chapters.forEach((chapter) => {
-        const chapterArticles = articles.filter((ar) => ar.chapter_id === chapter.id);
-        let chapterTotal = calculateChapterTotal(chapter.id);
+      pdf.rect(margin, y, colWidths[0], rowHeight);
+      pdf.rect(margin + colWidths[0], y, colWidths[1], rowHeight);
+      pdf.rect(margin + colWidths[0] + colWidths[1], y, colWidths[2], rowHeight);
+      y += rowHeight > lineHeight ? rowHeight : lineHeight;
+    };
 
-        drawTableRow(chapter.name, "", "", 10, true);
+    // --- Header ---
+    addHeader();
+    pdf.setFont("Helvetica", "bold");
+    pdf.setFontSize(10);
+    pdf.text("Libellé", margin + 10, y + 10);
+    pdf.text("Amount (Annual)", margin + colWidths[0] + colWidths[1] - 5, y + 10, { align: "right" });
+    pdf.text("Amount (Additional)", margin + tableWidth - 5, y + 10, { align: "right" });
+    pdf.rect(margin, y, colWidths[0], lineHeight);
+    pdf.rect(margin + colWidths[0], y, colWidths[1], lineHeight);
+    pdf.rect(margin + colWidths[0] + colWidths[1], y, colWidths[2], lineHeight);
+    y += lineHeight;
 
-        budgets.forEach((budget) => {
-          const division = budgetDivisions.find(
-            (div) => div.chapter_id === chapter.id && div.budget_id === budget.id
-          );
-          const amount = division ? parseFloat(division.amount) : 0;
-          const formattedAmount = `$${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-          drawTableRow(
-            `Budget ${budget.id}`,
-            budget.id === 1 ? formattedAmount : "",
-            budget.id !== 1 ? formattedAmount : "",
-            20
-          );
-        });
+    let grandTotal = 0;
 
-        if (chapterArticles.length === 0) {
-          drawTableRow("", "0.00", "0.00");
-        } else {
-          chapterArticles.forEach((article) => {
-            const articleSousarticles = sousarticles.filter((sa) => sa.article_id === article.id);
-            const articleTotal = calculateArticleTotal(article.id);
+    chapters.forEach((chapter) => {
+      const chapterArticles = articles.filter((ar) => ar.chapter_id === chapter.id);
+      let chapterTotal = 0;
 
-            drawTableRow(article.name, "", "", 20);
+      // Chapter Row
+      drawTableRow(chapter.name, "", "", 10, true);
 
-            budgets.forEach((budget) => {
-              const division = budgetDivisions.find(
-                (div) => div.article_id === article.id && div.budget_id === budget.id
-              );
-              const amount = division ? parseFloat(division.amount) : 0;
-              const formattedAmount = `$${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-              drawTableRow(
-                `Budget ${budget.id}`,
-                budget.id === 1 ? formattedAmount : "",
-                budget.id !== 1 ? formattedAmount : "",
-                30
-              );
-            });
+      if (chapterArticles.length === 0) {
+        // Check for chapter-level distribution
+        const initialDivision = budgetDivisions.find((div) => div.chapter_id === chapter.id && !div.article_id && div.budget_id === 1);
+        const additionalDivision = budgetDivisions.find((div) => div.chapter_id === chapter.id && !div.article_id && div.budget_id !== 1);
+        const amountAnnual = initialDivision ? parseFloat(initialDivision.amount) : 0;
+        const amountAdditional = additionalDivision ? parseFloat(additionalDivision.amount) : 0;
+        chapterTotal += amountAnnual + amountAdditional;
 
-            if (articleSousarticles.length === 0) {
-              drawTableRow("", "0.00", "0.00");
-            } else {
-              articleSousarticles.forEach((sousarticle) => {
-                const initialDivision = budgetDivisions.find(
-                  (div) => div.sousarticle_id === sousarticle.id && div.budget_id === 1
-                );
-                const additionalDivision = budgetDivisions.find(
-                  (div) => div.sousarticle_id === sousarticle.id && div.budget_id !== 1
-                );
-                const amountAnnual = initialDivision ? parseFloat(initialDivision.amount) : 0;
-                const amountAdditional = additionalDivision ? parseFloat(additionalDivision.amount) : 0;
-                const formattedAmountAnnual = `$${amountAnnual.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                const formattedAmountAdditional = `$${amountAdditional.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-                drawTableRow(sousarticle.name, formattedAmountAnnual, formattedAmountAdditional, 40);
-              });
-            }
-
-            if (articleSousarticles.length > 0) {
-              drawTableRow(
-                "Total Partiel",
-                "",
-                `$${articleTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-                20,
-                true
-              );
-            }
-          });
+        if (amountAnnual > 0 || amountAdditional > 0) {
+          drawTableRow("Total Chapter", formatDA(amountAnnual), formatDA(amountAdditional), 20, true);
         }
+      } else {
+        chapterArticles.forEach((article) => {
+          const articleDivisions = budgetDivisions.filter(
+            (div) => div.article_id === article.id && !div.sousarticle_id
+          );
+          let articleTotal = 0;
 
-        drawTableRow(
-          "Total Partiel",
-          "",
-          `$${chapterTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-          10,
-          true
-        );
-        grandTotal += chapterTotal;
-      });
+          // Article Row
+          drawTableRow(article.name, "", "", 20);
 
-      drawTableRow(
-        "TOTAL GENERAL DU BUDGET",
-        "",
-        `$${grandTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        10,
-        true
-      );
+          if (articleDivisions.length > 0) {
 
-      pdf.save("budget-report.pdf");
-      alert("✅ PDF generated successfully!");
-    } catch (err) {
-      console.error("❌ Error generating PDF:", err);
-      alert("Failed to generate PDF. Please check the console.");
-    }
+            articleDivisions.forEach((division) => {
+              const amountAnnual = division.budget_id === 1 ? parseFloat(division.amount) : 0;
+              const amountAdditional = division.budget_id !== 1 ? parseFloat(division.amount) : 0;
+              if (amountAnnual > 0 || amountAdditional > 0) {
+                drawTableRow(article.name, formatDA(amountAnnual), formatDA(amountAdditional), 40);
+                articleTotal += amountAnnual + amountAdditional;
+              }
+            });
+          }
+
+          const articleSousarticles = sousarticles.filter((sa) => sa.article_id === article.id);
+          if (articleSousarticles.length > 0) {
+            articleSousarticles.forEach((sousarticle) => {
+              const initialDivision = budgetDivisions.find(
+                (div) => div.sousarticle_id === sousarticle.id && div.budget_id === 1
+              );
+              const additionalDivision = budgetDivisions.find(
+                (div) => div.sousarticle_id === sousarticle.id && div.budget_id !== 1
+              );
+              const amountAnnual = initialDivision ? parseFloat(initialDivision.amount) : 0;
+              const amountAdditional = additionalDivision ? parseFloat(additionalDivision.amount) : 0;
+              if (amountAnnual > 0 || amountAdditional > 0) {
+                drawTableRow(sousarticle.name, formatDA(amountAnnual), formatDA(amountAdditional), 40);
+                articleTotal += amountAnnual + amountAdditional;
+              }
+            });
+          } else if (articleDivisions.length === 0) {
+            // Skip empty rows
+          }
+
+          // Article Total
+          if (articleTotal > 0) {
+            chapterTotal += articleTotal;
+          }
+        });
+        // Chapter Total
+        if (chapterTotal > 0) {
+          drawTableRow("Total Article", "", formatDA(chapterTotal), 10, true);
+        }
+      }
+
+      grandTotal += chapterTotal;
+    });
+
+    // Grand Total
+    drawTableRow("TOTAL GENERAL DU BUDGET", "", formatDA(grandTotal), 10, true);
+
+    pdf.save("budget-report.pdf");
+    alert("✅ PDF generated successfully!");
+  } catch (err) {
+    console.error("❌ Error generating PDF:", err);
+    alert("Failed to generate PDF. Please check the console.");
   }
+
+  // Format DA helper
+  function formatDA(value) {
+    return `${value.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })} DA`;
+  }
+}
 
   const toggleChapter = (id) => {
     setOpenChapters((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -495,7 +499,7 @@ const BudgetDevisions = () => {
     try {
       await window.api.deleteArticle(id);
       setArticles((prev) => prev.filter((ar) => ar.id !== id));
-      setSousarticles((prev) => prev.filter((sa) => sa.article_id !== id));
+      setSousarticles((prev) => prev.filter((sa) => sa.article_id === id));
     } catch (error) {
       console.error("Error deleting article:", error);
       setError("Failed to delete article.");
@@ -549,9 +553,17 @@ const BudgetDevisions = () => {
 
     try {
       const divisionData = { budget_id: budgetId, amount };
-      if (type === 'chapter') divisionData.chapter_id = id;
-      else if (type === 'article') divisionData.article_id = id;
-      else divisionData.sousarticle_id = id;
+      if (type === 'chapter') {
+        divisionData.chapter_id = id;
+      } else if (type === 'article') {
+        divisionData.article_id = id;
+        divisionData.chapter_id = parentId; // parentId is chapter_id for articles
+      } else if (type === 'sousarticle') {
+        divisionData.sousarticle_id = id;
+        const article = articles.find((ar) => ar.id === parentId);
+        divisionData.article_id = parentId;
+        divisionData.chapter_id = article ? article.chapter_id : null;
+      }
 
       await window.api.addBudgetDivision(divisionData);
 
@@ -572,8 +584,8 @@ const BudgetDevisions = () => {
 
       await addExpense({
         sousarticle_id: type === 'sousarticle' ? id : undefined,
-        article_id: type === 'article' ? id : parentId,
-        chapter_id: type === 'chapter' ? id : undefined,
+        article_id: type === 'article' ? id : type === 'sousarticle' ? parentId : undefined,
+        chapter_id: type === 'chapter' ? id : type === 'sousarticle' && divisionData.chapter_id ? divisionData.chapter_id : undefined,
         name,
         amount
       });
@@ -592,43 +604,46 @@ const BudgetDevisions = () => {
     }
   };
 
-  const calculateChapterTotal = (chapterId) => {
-    const chapterDivisions = budgetDivisions
-      .filter((div) => div.chapter_id === chapterId)
-      .reduce((acc, div) => acc + (div.amount || 0), 0);
-    const articleDivisions = articles
-      .filter((ar) => ar.chapter_id === chapterId)
-      .reduce((acc, ar) => acc + calculateArticleTotal(ar.id), 0);
-    return chapterDivisions + articleDivisions;
-  };
-
   const calculateArticleTotal = (articleId) => {
     const articleDivisions = budgetDivisions
-      .filter((div) => div.article_id === articleId)
-      .reduce((acc, div) => acc + (div.amount || 0), 0);
+      .filter((div) => div.article_id === articleId && !div.sousarticle_id)
+      .reduce((acc, div) => acc + (parseFloat(div.amount) || 0), 0);
     const sousarticleDivisions = budgetDivisions
       .filter((div) => sousarticles.find((sa) => sa.id === div.sousarticle_id && sa.article_id === articleId))
-      .reduce((acc, div) => acc + (div.amount || 0), 0);
+      .reduce((acc, div) => acc + (parseFloat(div.amount) || 0), 0);
     return articleDivisions + sousarticleDivisions;
   };
 
+  const calculateChapterTotal = (chapterId) => {
+    const articleTotals = articles
+      .filter((ar) => ar.chapter_id === chapterId)
+      .reduce((acc, ar) => acc + calculateArticleTotal(ar.id), 0);
+    const chapterDivisions = budgetDivisions
+      .filter((div) => div.chapter_id === chapterId && !div.article_id && !div.sousarticle_id)
+      .reduce((acc, div) => acc + (parseFloat(div.amount) || 0), 0);
+    return articleTotals + chapterDivisions;
+  };
+
   const calculateItemPrice = (id, budgetId, type = 'sousarticle') => {
-    const key = type === 'chapter' ? `chapter_${id}` : type === 'article' ? `article_${id}` : id;
     const division = budgetDivisions.find((div) =>
-      (type === 'chapter' && div.chapter_id === id) ||
-      (type === 'article' && div.article_id === id) ||
+      (type === 'chapter' && div.chapter_id === id && !div.article_id && !div.sousarticle_id) ||
+      (type === 'article' && div.article_id === id && !div.sousarticle_id) ||
       (type === 'sousarticle' && div.sousarticle_id === id)
-      && div.budget_id === budgetId);
-    return division ? division.amount : expenseInputs[`${key}_${budgetId}`] || 0;
+    );
+    return division ? parseFloat(division.amount) : expenseInputs[`${type === 'chapter' ? `chapter_${id}` : type === 'article' ? `article_${id}` : id}_${budgetId}`] || 0;
   };
 
   const hasDivision = (id, budgetId, type = 'sousarticle') => {
     return budgetDivisions.some((div) =>
-      (type === 'chapter' && div.chapter_id === id) ||
-      (type === 'article' && div.article_id === id) ||
+      (type === 'chapter' && div.chapter_id === id && !div.article_id && !div.sousarticle_id) ||
+      (type === 'article' && div.article_id === id && !div.sousarticle_id) ||
       (type === 'sousarticle' && div.sousarticle_id === id)
-      && div.budget_id === budgetId);
+    );
   };
+
+  // ... (Previous imports, styled components, and other code remain unchanged)
+
+  // Inside the BudgetDevisions component, replace the relevant JSX in the return statement:
 
   return (
     <>
@@ -694,7 +709,7 @@ const BudgetDevisions = () => {
                   type="text"
                   value={newChapterName}
                   onChange={(e) => setNewChapterName(e.target.value)}
-                  placeholder="Enter article name"
+                  placeholder="Enter chapter name"
                   onKeyPress={(e) => {
                     if (e.key === "Enter") addChapter();
                   }}
@@ -718,7 +733,6 @@ const BudgetDevisions = () => {
                 style={{
                   cursor: 'pointer'
                 }}
-
               />
             )}
           </div>
@@ -763,7 +777,7 @@ const BudgetDevisions = () => {
                     </div>
                   </ChapterTitle>
                   <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-                    <p>Article Total: {calculateChapterTotal(ch.id).toFixed(2)} DA</p>
+                    <p>Chapter Total: {calculateChapterTotal(ch.id).toFixed(2)} DA</p>
                     <MdDelete
                       size={20}
                       color="red"
@@ -778,7 +792,7 @@ const BudgetDevisions = () => {
                           type="text"
                           value={newItemName[`chapter_${ch.id}`] || ""}
                           onChange={(e) => handleNewItemName(ch.id, e.target.value, 'article')}
-                          placeholder="Enter subarticle name"
+                          placeholder="Enter article name"
                           onKeyPress={(e) => {
                             if (e.key === "Enter") {
                               addArticle(ch.id, newItemName[`chapter_${ch.id}`]);
@@ -810,39 +824,6 @@ const BudgetDevisions = () => {
                 </ToggleButton>
                 {openChapters[ch.id] && (
                   <List>
-                    <div
-                    >
-                      {budgets.map((budget) => (
-                        hasDivision(ch.id, budget.id, 'chapter') ? (
-                          <div key={budget.id} style={{ display: "flex", alignItems: "center", gap: 10, margin: "8px 0" }}>
-                            <span>Budget {budget.id}:</span>
-                            <span>{calculateItemPrice(ch.id, budget.id, 'chapter').toFixed(2)} DA</span>
-                          </div>
-                        ) : budget.total_amount - budget.spent > 0 && (
-                          <div key={budget.id} style={{ display: "flex", alignItems: "center", gap: 10, margin: "8px 0" }}>
-                            <span>Budget {budget.id}:</span>
-                            <input
-                              type="number"
-                              style={{
-                                width: 100,
-                                borderColor: "#001A82",
-                                borderWidth: 1,
-                                borderRadius: 8,
-                              }}
-                              value={expenseInputs[`chapter_${ch.id}_${budget.id}`] || ""}
-                              onChange={(e) => handleExpenseInput(ch.id, budget.id, e.target.value, 'chapter')}
-                            />
-                            <MdSave
-                              size={20}
-                              color="#001A82"
-                              onClick={(e) => saveExpense(e, ch.id, null, ch.name, budget.id, 'chapter')}
-                            />
-                          </div>
-                        )
-                      ))}
-
-                    </div>
-
                     {articles
                       .filter((ar) => ar.chapter_id === ch.id)
                       .map((ar) => (
@@ -863,7 +844,7 @@ const BudgetDevisions = () => {
                               {ar.name}
                             </div>
                             <div>
-                              <p>Subarticle Total: {calculateArticleTotal(ar.id).toFixed(2)} DA</p>
+                              <p>Article Total: {calculateArticleTotal(ar.id).toFixed(2)} DA</p>
                             </div>
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20 }}>
                               {addInputVisible[ar.id] ? (
@@ -921,37 +902,67 @@ const BudgetDevisions = () => {
                                   borderRadius: 8,
                                   margin: "8px 20px",
                                   padding: "8px 20px",
-                                  display: 'none'
                                 }}
                               >
-                                {budgets.map((budget) => (
-                                  hasDivision(ar.id, budget.id, 'article') ? (
-                                    <div key={budget.id} style={{ display: "flex", alignItems: "center", gap: 10, margin: "8px 0" }}>
-                                      <span>Budget {budget.id}:</span>
-                                      <span>{calculateItemPrice(ar.id, budget.id, 'article').toFixed(2)} DA</span>
-                                    </div>
-                                  ) : budget.total_amount - budget.spent > 0 && (
-                                    <div key={budget.id} style={{ display: "flex", alignItems: "center", gap: 10, margin: "8px 0" }}>
-                                      <span>Budget {budget.id}:</span>
-                                      <input
-                                        type="number"
-                                        style={{
-                                          width: 100,
-                                          borderColor: "#001A82",
-                                          borderWidth: 1,
-                                          borderRadius: 8,
-                                        }}
-                                        value={expenseInputs[`article_${ar.id}_${budget.id}`] || ""}
-                                        onChange={(e) => handleExpenseInput(ar.id, budget.id, e.target.value, 'article')}
-                                      />
-                                      <MdSave
-                                        size={20}
-                                        color="#001A82"
-                                        onClick={(e) => saveExpense(e, ar.id, ar.chapter_id, ar.name, budget.id, 'article')}
-                                      />
-                                    </div>
-                                  )
-                                ))}
+                                <span
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'start',
+                                    justifyContent: 'center',
+                                    flexDirection: 'column',
+                                    gap: 8
+                                  }}
+                                >
+                                  {budgets.map((b) => {
+                                    const division = budgetDivisions.find(
+                                      (budget) => budget.article_id === ar.id && budget.budget_id === b.id && !budget.sousarticle_id
+                                    );
+                                    const amount = division ? parseFloat(division.amount) : 0;
+                                    const inputKey = `article_${ar.id}_${b.id}`; // Align with existing key format
+
+                                    return (
+                                      <div key={b.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                        <span>{b.id === 1 ? "Annual" : "Additional"}:</span>
+                                        {amount > 0 ? (
+                                          <span>{amount.toFixed(2)} DA</span>
+                                        ) : (
+                                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                            {b.total_amount - b.spent > 0 ? (
+                                              <>
+                                                <input
+                                                  type="number"
+                                                  style={{
+                                                    width: 100,
+                                                    borderColor: "#001A82",
+                                                    borderWidth: 1,
+                                                    borderRadius: 8,
+                                                  }}
+                                                  value={expenseInputs[inputKey] || ""}
+                                                  onChange={(e) => handleExpenseInput(ar.id, b.id, e.target.value, 'article')}
+                                                  min="0"
+                                                  step="0.01"
+                                                  placeholder="Enter amount"
+                                                />
+                                                <MdSave
+                                                  size={20}
+                                                  color="#001A82"
+                                                  onClick={(e) => {
+                                                    saveExpense(e, ar.id, ch.id, ar.name, b.id, 'article');
+                                                    // Reset input field after saving
+                                                    setExpenseInputs((prev) => ({ ...prev, [inputKey]: "" }));
+                                                  }}
+                                                  disabled={!expenseInputs[inputKey] || parseFloat(expenseInputs[inputKey]) <= 0}
+                                                />
+                                              </>
+                                            ) : (
+                                              <span>0.00 DA</span>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </span>
                               </div>
                               {sousarticles
                                 .filter((sa) => sa.article_id === ar.id)
@@ -970,34 +981,55 @@ const BudgetDevisions = () => {
                                   >
                                     <div>{sa.name}</div>
                                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                                      {budgets.map((budget) => (
-                                        hasDivision(sa.id, budget.id, 'sousarticle') ? (
-                                          <div key={budget.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                            <span>Budget {budget.id}:</span>
-                                            <span>{calculateItemPrice(sa.id, budget.id, 'sousarticle').toFixed(2)} DA</span>
+                                      {budgets.map((b) => {
+                                        const division = budgetDivisions.find(
+                                          (budget) => budget.sousarticle_id === sa.id && budget.budget_id === b.id
+                                        );
+                                        const amount = division ? parseFloat(division.amount) : 0;
+                                        const inputKey = `${sa.id}_${b.id}`; // Align with handleExpenseInput key format
+
+                                        return (
+                                          <div key={b.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                            <span>{b.id === 1 ? "Annual" : "Additional"}:</span>
+                                            {amount > 0 ? (
+                                              <span>{amount.toFixed(2)} DA</span>
+                                            ) : (
+                                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                                {b.total_amount - b.spent > 0 ? (
+                                                  <>
+                                                    <input
+                                                      type="number"
+                                                      style={{
+                                                        width: 100,
+                                                        borderColor: "#001A82",
+                                                        borderWidth: 1,
+                                                        borderRadius: 8,
+                                                      }}
+                                                      value={expenseInputs[inputKey] || ""}
+                                                      onChange={(e) => handleExpenseInput(sa.id, b.id, e.target.value, 'sousarticle')}
+                                                      min="0"
+                                                      step="0.01"
+                                                      placeholder="Enter amount"
+                                                    />
+                                                    <MdSave
+                                                      size={20}
+                                                      color="#001A82"
+                                                      onClick={(e) => {
+                                                        saveExpense(e, sa.id, ar.id, sa.name, b.id, 'sousarticle');
+                                                        // Reset input field after saving
+                                                        setExpenseInputs((prev) => ({ ...prev, [inputKey]: "" }));
+                                                      }}
+                                                      disabled={!expenseInputs[inputKey] || parseFloat(expenseInputs[inputKey]) <= 0}
+                                                    />
+                                                  </>
+                                                ) : (
+                                                  <span>0.00 DA</span>
+                                                )}
+                                              </div>
+                                            )}
                                           </div>
-                                        ) : budget.total_amount - budget.spent > 0 && (
-                                          <div key={budget.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                            <span>Budget {budget.id}:</span>
-                                            <input
-                                              type="number"
-                                              style={{
-                                                width: 100,
-                                                borderColor: "#001A82",
-                                                borderWidth: 1,
-                                                borderRadius: 8,
-                                              }}
-                                              value={expenseInputs[`${sa.id}_${budget.id}`] || ""}
-                                              onChange={(e) => handleExpenseInput(sa.id, budget.id, e.target.value, 'sousarticle')}
-                                            />
-                                            <MdSave
-                                              size={20}
-                                              color="#001A82"
-                                              onClick={(e) => saveExpense(e, sa.id, ar.id, sa.name, budget.id, 'sousarticle')}
-                                            />
-                                          </div>
-                                        )
-                                      ))}
+                                        );
+                                      })}
                                     </div>
                                     <MdDelete
                                       size={20}
@@ -1015,19 +1047,20 @@ const BudgetDevisions = () => {
               </div>
             );
           })}
+          {(totalRemaining === 0 && totalBudget > 0) && (
+            <div style={{ position: "absolute", top: 20, right: 20 }}>
+              <Button
+                text={"Generate Report"}
+                handleClick={() => generatePDF()}
+              />
+            </div>
+          )}
         </Section>
-        {(totalRemaining === 0 && totalBudget > 0) && (
-          <div style={{ position: "absolute", top: 20, right: 20 }}>
-            <Button
-              text={"Generate Report"}
-              handleClick={() => generatePDF()}
-            />
-          </div>
-        )}
         {sidebarOpen && <SideBar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
       </Container>
     </>
-  );
+  )
 };
 
+// ... (Rest of the component code, including other functions like generatePDF, remains unchanged)
 export default BudgetDevisions;

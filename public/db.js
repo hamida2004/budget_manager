@@ -63,13 +63,16 @@ CREATE TABLE IF NOT EXISTS budgets (
 
 -- BUDGET DIVISIONS
 CREATE TABLE IF NOT EXISTS budget_divisions (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  budget_id INTEGER NOT NULL,
-  sousarticle_id INTEGER NOT NULL,
-  amount REAL NOT NULL DEFAULT 0,
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY(budget_id) REFERENCES budgets(id) ON DELETE CASCADE,
-  FOREIGN KEY(sousarticle_id) REFERENCES sousarticles(id) ON DELETE CASCADE
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    budget_id INTEGER,
+    chapter_id INTEGER,
+    article_id INTEGER,
+    sousarticle_id INTEGER,
+    amount REAL,
+    FOREIGN KEY (budget_id) REFERENCES budgets(id),
+    FOREIGN KEY (chapter_id) REFERENCES chapters(id),
+    FOREIGN KEY (article_id) REFERENCES articles(id),
+    FOREIGN KEY (sousarticle_id) REFERENCES sousarticles(id)
 );
 
 -- TOTAL BUDGET

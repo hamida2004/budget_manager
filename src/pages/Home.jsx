@@ -57,8 +57,8 @@ const PieWrapper = styled.div`
   flex-direction: column;
   align-items: center;
   padding: 20px;
-    box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
-    border-radius: 8px;
+  box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
 `;
 
 const LegendContainer = styled.div`
@@ -92,8 +92,8 @@ const LegendItem = styled.li`
 `;
 
 const Span = styled.span`
-width:100%;
-`
+  width: 100%;
+`;
 
 const LegendHeader = styled.div`
   display: flex;
@@ -115,6 +115,19 @@ const Progress = styled.div`
   background-color: ${(props) =>
     props.percent > 50 ? "#2ecc71" : props.percent > 20 ? "#f1c40f" : "#e74c3c"};
   border-radius: 4px;
+`;
+
+const ArticleList = styled.ul`
+  list-style: none;
+  padding-left: 20px;
+  margin-top: 5px;
+  display: ${(props) => (props.visible ? "block" : "none")};
+`;
+
+const ArticleItem = styled.li`
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 24px;
 `;
 
 const SousarticleList = styled.ul`
@@ -144,32 +157,12 @@ const ShowMoreButton = styled.button`
   }
 `;
 
-const ManagementSection = styled.div`
-  margin-top: 20px;
-  padding: 10px;
-  background-color: #f9f9f9;
-  border: 1px solid #ddd;
-`;
-
-const InputContainer = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-`;
-
-const Input = styled.input`
-  padding: 5px;
-  border: 1px solid #001A82;
-  border-radius: 4px;
-`;
-
 const TransactionsSection = styled.div`
   margin-top: 20px;
   padding: 20px;
-    box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
-    border-radius: 8px;
-    flex:1
+  box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  flex: 1;
 `;
 
 const TransactionGroup = styled.div`
@@ -193,9 +186,9 @@ const TransactionItem = styled.div`
     width: 5px;
     border-radius: 4px 0 0 4px;
     background-color: ${(props) =>
-    props.$title === "Report Generated"
-      ? "#b3e5fc"
-      : props.$title === "New Budget Added"
+      props.$title === "Report Generated"
+        ? "#b3e5fc"
+        : props.$title === "New Budget Added"
         ? "#2ecc71"
         : "#e74c3c"};
   }
@@ -203,7 +196,6 @@ const TransactionItem = styled.div`
 
 const Summary = styled.div`
   margin-top: 20px;
-  padding: 10px;
   padding: 20px;
   box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
   border-radius: 8px;
@@ -223,15 +215,11 @@ function Home() {
   const [budgetDivisions, setBudgetDivisions] = useState([]);
   const [articles, setArticles] = useState([]);
   const [chapters, setChapters] = useState([]);
-  const [newArticleName, setNewArticleName] = useState("");
-  const [newSousarticleName, setNewSousarticleName] = useState("");
-  const [selectedArticleId, setSelectedArticleId] = useState("");
-  const [selectedChapterId, setSelectedChapterId] = useState("");
+  const [expandedChapters, setExpandedChapters] = useState({});
   const [expandedArticles, setExpandedArticles] = useState({});
-  const [showAllArticles, setShowAllArticles] = useState(false);
+  const [showAllChapters, setShowAllChapters] = useState(false);
 
   useEffect(() => {
-    console.log(user)
     if (!user) return navigate("/login");
     fetchData();
   }, [user, navigate]);
@@ -269,33 +257,54 @@ function Home() {
     return article ? article.name : "Unknown";
   };
 
-  // Calculate article-level budget data
-  const articleBudgets = articles.map((article) => {
-    const relatedSousarticles = sousarticles.filter((sa) => sa.article_id === article.id);
+  const getChapterName = (id) => {
+    const chapter = chapters.find((c) => c.id === id);
+    return chapter ? chapter.name : "Unknown";
+  };
+
+  // Calculate chapter-level budget data
+  const chapterBudgets = chapters.map((chapter) => {
+    const relatedArticles = articles.filter((ar) => ar.chapter_id === chapter.id);
+    const relatedSousarticles = sousarticles.filter((sa) =>
+      relatedArticles.some((ar) => ar.id === sa.article_id)
+    );
     const spent = budgetDivisions
-      .filter((div) => relatedSousarticles.some((sa) => sa.id === div.sousarticle_id))
-      .reduce((acc, div) => acc + (div.amount || 0), 0);
-    const allocated = spent; // Assuming allocated is the sum of spent for simplicity
-    const remaining = allocated - spent; // For now, spent equals allocated, so remaining is 0
+      .filter(
+        (div) =>
+          div.chapter_id === chapter.id ||
+          relatedArticles.some((ar) => ar.id === div.article_id) ||
+          relatedSousarticles.some((sa) => sa.id === div.sousarticle_id)
+      )
+      .reduce((acc, div) => acc + (parseFloat(div.amount) || 0), 0);
+    const allocated = spent; // Assuming allocated is the sum of spent
+    const remaining = allocated - spent; // For now, remaining is 0
     const percentRemaining = allocated ? (remaining / allocated) * 100 : 0;
-    return { id: article.id, name: article.name, allocated, spent, remaining, percentRemaining, hasDivisions: spent > 0 };
+    return {
+      id: chapter.id,
+      name: chapter.name,
+      allocated,
+      spent,
+      remaining,
+      percentRemaining,
+      hasDivisions: spent > 0,
+    };
   });
 
-  // Filter articles with divisions
-  const contributingArticles = articleBudgets.filter((art) => art.hasDivisions);
-  const displayedArticles = showAllArticles ? articleBudgets : contributingArticles;
+  // Filter chapters with divisions
+  const contributingChapters = chapterBudgets.filter((ch) => ch.hasDivisions);
+  const displayedChapters = showAllChapters ? chapterBudgets : contributingChapters;
 
   // Total spent and remaining
-  const totalSpent = articleBudgets.reduce((acc, art) => acc + art.spent, 0);
+  const totalSpent = chapterBudgets.reduce((acc, ch) => acc + ch.spent, 0);
   const remaining = totalBudget - totalSpent;
 
-  // Pie chart data for contributing articles
+  // Pie chart data for contributing chapters
   const pieData = {
-    labels: contributingArticles.map((art) => art.name),
+    labels: contributingChapters.map((ch) => ch.name),
     datasets: [
       {
-        data: contributingArticles.map((art) => art.spent),
-        backgroundColor: contributingArticles.map((_, i) => `hsl(${(i * 57) % 360}, 70%, 50%)`),
+        data: contributingChapters.map((ch) => ch.spent),
+        backgroundColor: contributingChapters.map((_, i) => `hsl(${(i * 57) % 360}, 70%, 50%)`),
         borderWidth: 1,
       },
     ],
@@ -313,45 +322,44 @@ function Home() {
     cutout: "70%", // Doughnut hole size
   };
 
+  // Get articles for a chapter with budget details
+  const getArticlesForChapter = (chapterId) => {
+    const relatedArticles = articles.filter((ar) => ar.chapter_id === chapterId);
+    return relatedArticles.map((ar) => {
+      const relatedSousarticles = sousarticles.filter((sa) => sa.article_id === ar.id);
+      const spent = budgetDivisions
+        .filter(
+          (div) =>
+            div.article_id === ar.id ||
+            relatedSousarticles.some((sa) => sa.id === div.sousarticle_id)
+        )
+        .reduce((acc, div) => acc + (parseFloat(div.amount) || 0), 0);
+      const allocated = spent;
+      const remaining = allocated - spent;
+      const percentRemaining = allocated ? (remaining / allocated) * 100 : 0;
+      return { id: ar.id, name: ar.name, spent, remaining, percentRemaining };
+    });
+  };
+
   // Get sousarticles for an article with budget details
   const getSousarticlesForArticle = (articleId) => {
     const relatedSousarticles = sousarticles.filter((sa) => sa.article_id === articleId);
     return relatedSousarticles.map((sa) => {
       const spent = budgetDivisions
         .filter((div) => div.sousarticle_id === sa.id)
-        .reduce((acc, div) => acc + (div.amount || 0), 0);
-      const allocated = spent; // Assuming allocated is spent
-      const remaining = allocated - spent; // For now, 0
+        .reduce((acc, div) => acc + (parseFloat(div.amount) || 0), 0);
+      const allocated = spent;
+      const remaining = allocated - spent;
       const percentRemaining = allocated ? (remaining / allocated) * 100 : 0;
       return { id: sa.id, name: sa.name, spent, remaining, percentRemaining };
     });
   };
 
-  // Add new article
-  const addArticle = async () => {
-    if (!newArticleName || !selectedChapterId) return;
-    try {
-      const newArt = await window.api.addArticles({ name: newArticleName, chapter_id: parseInt(selectedChapterId) });
-      setArticles([...articles, newArt]);
-      setNewArticleName("");
-      setSelectedChapterId("");
-    } catch (error) {
-      console.error("Error adding article:", error);
-    }
+  // Toggle chapter expansion
+  const toggleChapter = (id) => {
+    setExpandedChapters((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  // Add new sousarticle
-  const addSousarticle = async () => {
-    if (!newSousarticleName || !selectedArticleId) return;
-    try {
-      const newSa = await window.api.addSousarticles({ name: newSousarticleName, article_id: parseInt(selectedArticleId) });
-      setSousarticles([...sousarticles, newSa]);
-      setNewSousarticleName("");
-      setSelectedArticleId("");
-    } catch (error) {
-      console.error("Error adding sousarticle:", error);
-    }
-  };
   // Toggle article expansion
   const toggleArticle = (id) => {
     setExpandedArticles((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -381,7 +389,7 @@ function Home() {
           <MainContent>
             <ReportSection>
               <PieWrapper>
-                <h3>Budget by Article</h3>
+                <h3>Budget by Chapter</h3>
                 <Doughnut data={pieData} options={pieOptions} width={100} height={100} />
                 <Summary>
                   <SummaryItem>Total Budget: {totalBudget.toFixed(2)} DA</SummaryItem>
@@ -389,53 +397,83 @@ function Home() {
               </PieWrapper>
               <LegendContainer>
                 <Legend>
-                  {displayedArticles.map((article) => (
-                    <LegendItem key={article.id} color={`hsl(${(articles.findIndex(a => a.id === article.id) * 57) % 360}, 70%, 50%)`}>
-                      <LegendHeader onClick={() => toggleArticle(article.id)}>
-                        <div style={{ display: "flex", alignItems: "center",marginBottom:8 }}>
+                  {displayedChapters.map((chapter) => (
+                    <LegendItem key={chapter.id} color={`hsl(${(chapters.findIndex(c => c.id === chapter.id) * 57) % 360}, 70%, 50%)`}>
+                      <LegendHeader onClick={() => toggleChapter(chapter.id)}>
+                        <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
                           <span />
                           <Span
                             style={{
                               backgroundColor: 'white',
                               width: '100%',
-                              height:'fit-content'
+                              height: 'fit-content',
                             }}
-                          >{article.name} - {article.spent.toFixed(2)} DA</Span>
+                          >
+                            {chapter.name} - {chapter.spent.toFixed(2)} DA
+                          </Span>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-
-                          {article.hasDivisions && (
-                            expandedArticles[article.id] ? <FaChevronUp size={12} /> : <FaChevronDown size={12} />
+                          {chapter.hasDivisions && (
+                            expandedChapters[chapter.id] ? <FaChevronUp size={12} /> : <FaChevronDown size={12} />
                           )}
                         </div>
                       </LegendHeader>
-                      {article.hasDivisions && (
+                      {chapter.hasDivisions && (
                         <>
                           <ProgressBar>
-                            <Progress percent={article.percentRemaining} />
+                            <Progress percent={chapter.percentRemaining} />
                           </ProgressBar>
-                          <SousarticleList visible={expandedArticles[article.id]}>
-                            {getSousarticlesForArticle(article.id).map((sa) => (
-                              <SousarticleItem key={sa.id}>
-                                <span />
-                                <span
-                                  style={{
-                                    backgroundColor: 'white',
-                                    width: '100%'
-                                  }}
-                                >{sa.name} - Spent: {sa.spent.toFixed(2)} DA</span>
-
-                              </SousarticleItem>
+                          <ArticleList visible={expandedChapters[chapter.id]}>
+                            {getArticlesForChapter(chapter.id).map((article) => (
+                              <ArticleItem key={article.id}>
+                                <LegendHeader onClick={() => toggleArticle(article.id)}>
+                                  <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
+                                    <span style={{ marginLeft: 20 }} />
+                                    <Span
+                                      style={{
+                                        backgroundColor: 'white',
+                                        width: '100%',
+                                        height: 'fit-content',
+                                      }}
+                                    >
+                                      {article.name} - Spent: {article.spent.toFixed(2)} DA
+                                    </Span>
+                                  </div>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                    {article.spent > 0 && (
+                                      expandedArticles[article.id] ? <FaChevronUp size={12} /> : <FaChevronDown size={12} />
+                                    )}
+                                  </div>
+                                </LegendHeader>
+                                <ProgressBar>
+                                  <Progress percent={article.percentRemaining} />
+                                </ProgressBar>
+                                <SousarticleList visible={expandedArticles[article.id]}>
+                                  {getSousarticlesForArticle(article.id).map((sa) => (
+                                    <SousarticleItem key={sa.id}>
+                                      <span style={{ marginLeft: 40 }} />
+                                      <span
+                                        style={{
+                                          backgroundColor: 'white',
+                                          width: '100%',
+                                        }}
+                                      >
+                                        {sa.name} - Spent: {sa.spent.toFixed(2)} DA
+                                      </span>
+                                    </SousarticleItem>
+                                  ))}
+                                </SousarticleList>
+                              </ArticleItem>
                             ))}
-                          </SousarticleList>
+                          </ArticleList>
                         </>
                       )}
                     </LegendItem>
                   ))}
                 </Legend>
-                {articles.length > contributingArticles.length && (
-                  <ShowMoreButton onClick={() => setShowAllArticles(!showAllArticles)}>
-                    {showAllArticles ? "Show Less" : "Show More"}
+                {chapters.length > contributingChapters.length && (
+                  <ShowMoreButton onClick={() => setShowAllChapters(!showAllChapters)}>
+                    {showAllChapters ? "Show Less" : "Show More"}
                   </ShowMoreButton>
                 )}
               </LegendContainer>
@@ -447,10 +485,8 @@ function Home() {
                 alignItems: 'start',
                 justifyContent: 'center',
                 gap: 20,
-
               }}
             >
-
               <TransactionsSection>
                 <h3>Transactions</h3>
                 {Object.entries(groupedNotifications).map(([date, notifs]) => (
@@ -469,18 +505,14 @@ function Home() {
                   </TransactionGroup>
                 ))}
               </TransactionsSection>
-
               <Summary>
                 <h3>Budget Summary</h3>
-                <SummaryItem>Total Transactions: {budgets.length + budgetDivisions.length} </SummaryItem>
+                <SummaryItem>Total Transactions: {budgets.length + budgetDivisions.length}</SummaryItem>
                 <SummaryItem>Total Budget: {totalBudget.toFixed(2)} DA</SummaryItem>
                 <SummaryItem>Total Spent: {totalSpent.toFixed(2)} DA</SummaryItem>
                 <SummaryItem>Total Remaining: {remaining.toFixed(2)} DA</SummaryItem>
-
               </Summary>
             </div>
-
-
           </MainContent>
         </Content>
       </Container>

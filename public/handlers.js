@@ -88,6 +88,6 @@ db.createCrudHandlers("chapters", ["name"]);
 db.createCrudHandlers("articles", ["name", "chapter_id"]);
 db.createCrudHandlers("sousarticles", ["name", "article_id"]);
 db.createCrudHandlers("budgets", ["year", "type", "total_amount", "spent", "created_at"]);
-db.createCrudHandlers("budget_divisions", ["budget_id", "sousarticle_id", "amount", "created_at"]);
+db.createCrudHandlers("budget_divisions", ["budget_id","chapter_id","article_id", "sousarticle_id", "amount", "created_at"]);
 db.createCrudHandlers("total_budget", ["amount", "spent"]);
 db.createCrudHandlers("notifications", ["title", "content", "amount", "created_at"]);
