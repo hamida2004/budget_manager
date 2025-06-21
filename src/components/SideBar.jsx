@@ -130,6 +130,9 @@ const SideBar = ({ isOpen, onClose }) => {
           <NavItem isActive={getNavItemClass("/budget-div")} onClick={() => { navigate("/budget-div"); onClose(); }}>
             <MdMoney size={24} style={{ marginRight: 20 }} /> Budget Division
           </NavItem>
+          <NavItem isActive={getNavItemClass("/expenses")} onClick={() => { navigate("/expenses"); onClose(); }}>
+            <MdMoney size={24} style={{ marginRight: 20 }} /> Expenses
+          </NavItem>
           <NavItem isActive={getNavItemClass("/report")} onClick={() => { navigate("/report"); onClose(); }}>
             <MdBarChart size={24} style={{ marginRight: 20 }} /> Report
           </NavItem>

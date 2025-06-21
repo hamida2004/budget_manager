@@ -218,6 +218,7 @@ function Home() {
   const [expandedChapters, setExpandedChapters] = useState({});
   const [expandedArticles, setExpandedArticles] = useState({});
   const [showAllChapters, setShowAllChapters] = useState(false);
+  const [expensesByDivision, setExpensesByDivision] = useState({}); // Store expenses by divisionId
 
   useEffect(() => {
     if (!user) return navigate("/login");
@@ -233,15 +234,24 @@ function Home() {
         window.api.getArticles(),
         window.api.getChapters(),
       ]);
-      setBudgetDivisions(divs);
+      setBudgetDivisions(divs || []);
       setNotifications(
         notifs
           .filter((notif) => notif.title !== "Report Generated")
           .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       );
-      setSousarticles(sousarts);
-      setArticles(arts);
-      setChapters(chaps);
+      setSousarticles(sousarts || []);
+      setArticles(arts || []);
+      setChapters(chaps || []);
+
+      // Fetch expenses for all divisions
+      const expensePromises = divs.map((div) => window.api.getExpensesByDivision(div.id));
+      const allExpenses = await Promise.all(expensePromises);
+      const expensesByDivision = divs.reduce((acc, div, index) => {
+        acc[div.id] = allExpenses[index] || [];
+        return acc;
+      }, {});
+      setExpensesByDivision(expensesByDivision);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -264,29 +274,29 @@ function Home() {
 
   // Calculate chapter-level budget data
   const chapterBudgets = chapters.map((chapter) => {
+    const relatedDivisions = budgetDivisions.filter((div) => div.chapter_id === chapter.id);
     const relatedArticles = articles.filter((ar) => ar.chapter_id === chapter.id);
-    const relatedSousarticles = sousarticles.filter((sa) =>
-      relatedArticles.some((ar) => ar.id === sa.article_id)
-    );
-    const spent = budgetDivisions
-      .filter(
-        (div) =>
-          div.chapter_id === chapter.id ||
-          relatedArticles.some((ar) => ar.id === div.article_id) ||
-          relatedSousarticles.some((sa) => sa.id === div.sousarticle_id)
-      )
-      .reduce((acc, div) => acc + (parseFloat(div.amount) || 0), 0);
-    const allocated = spent; // Assuming allocated is the sum of spent
-    const remaining = allocated - spent; // For now, remaining is 0
-    const percentRemaining = allocated ? (remaining / allocated) * 100 : 0;
+    const relatedSousarticles = sousarticles.filter((sa) => relatedArticles.some((ar) => ar.id === sa.article_id));
+    const allRelatedDivisions = [
+      ...relatedDivisions.filter((div) => !div.article_id && !div.sousarticle_id),
+      ...budgetDivisions.filter((div) => relatedArticles.some((ar) => ar.id === div.article_id)),
+      ...budgetDivisions.filter((div) => relatedSousarticles.some((sa) => sa.id === div.sousarticle_id)),
+    ];
+    const totalAllocated = allRelatedDivisions.reduce((acc, div) => acc + (parseFloat(div.amount) || 0), 0);
+    const totalSpent = allRelatedDivisions.reduce((acc, div) => {
+      const divisionExpenses = expensesByDivision[div.id] || [];
+      return acc + divisionExpenses.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
+    }, 0);
+    const remaining = totalAllocated - totalSpent;
+    const percentRemaining = totalAllocated ? (remaining / totalAllocated) * 100 : 0;
     return {
       id: chapter.id,
       name: chapter.name,
-      allocated,
-      spent,
+      allocated: totalAllocated,
+      spent: totalSpent,
       remaining,
       percentRemaining,
-      hasDivisions: spent > 0,
+      hasDivisions: totalAllocated > 0,
     };
   });
 
@@ -294,16 +304,55 @@ function Home() {
   const contributingChapters = chapterBudgets.filter((ch) => ch.hasDivisions);
   const displayedChapters = showAllChapters ? chapterBudgets : contributingChapters;
 
-  // Total spent and remaining
-  const totalSpent = chapterBudgets.reduce((acc, ch) => acc + ch.spent, 0);
-  const remaining = totalBudget - totalSpent;
+  // Calculate article-level budget data
+  const getArticlesForChapter = (chapterId) => {
+    const relatedArticles = articles.filter((ar) => ar.chapter_id === chapterId);
+    return relatedArticles.map((ar) => {
+      const relatedDivisions = budgetDivisions.filter((div) => div.article_id === ar.id && !div.sousarticle_id);
+      const relatedSousarticles = sousarticles.filter((sa) => sa.article_id === ar.id);
+      const totalAllocated = budgetDivisions
+        .filter(
+          (div) => (div.article_id === ar.id && !div.sousarticle_id) || relatedSousarticles.some((sa) => sa.id === div.sousarticle_id)
+        )
+        .reduce((acc, div) => acc + (parseFloat(div.amount) || 0), 0);
+      const totalSpent = relatedDivisions.reduce((acc, div) => {
+        const divisionExpenses = expensesByDivision[div.id] || [];
+        return acc + divisionExpenses.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
+      }, 0);
+      const remaining = totalAllocated - totalSpent;
+      const percentRemaining = totalAllocated ? (remaining / totalAllocated) * 100 : 0;
+      return { id: ar.id, name: ar.name, allocated: totalAllocated, spent: totalSpent, remaining, percentRemaining };
+    });
+  };
 
-  // Pie chart data for contributing chapters
+  // Calculate sousarticle-level budget data
+  const getSousarticlesForArticle = (articleId) => {
+    const relatedSousarticles = sousarticles.filter((sa) => sa.article_id === articleId);
+    return relatedSousarticles.map((sa) => {
+      const relatedDivisions = budgetDivisions.filter((div) => div.sousarticle_id === sa.id);
+      const totalAllocated = relatedDivisions.reduce((acc, div) => acc + (parseFloat(div.amount) || 0), 0);
+      const totalSpent = relatedDivisions.reduce((acc, div) => {
+        const divisionExpenses = expensesByDivision[div.id] || [];
+        return acc + divisionExpenses.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
+      }, 0);
+      const remaining = totalAllocated - totalSpent;
+      const percentRemaining = totalAllocated ? (remaining / totalAllocated) * 100 : 0;
+      return { id: sa.id, name: sa.name, allocated: totalAllocated, spent: totalSpent, remaining, percentRemaining };
+    });
+  };
+
+  // Calculate total spent across all divisions
+  const totalSpent = Object.values(expensesByDivision).reduce((acc, expenses) => {
+    return acc + expenses.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
+  }, 0);
+  const totalRemaining = totalBudget - totalSpent;
+
+  // Pie chart data for contributing chapters (using allocated budget)
   const pieData = {
     labels: contributingChapters.map((ch) => ch.name),
     datasets: [
       {
-        data: contributingChapters.map((ch) => ch.spent),
+        data: contributingChapters.map((ch) => ch.allocated),
         backgroundColor: contributingChapters.map((_, i) => `hsl(${(i * 57) % 360}, 70%, 50%)`),
         borderWidth: 1,
       },
@@ -320,39 +369,6 @@ function Home() {
       },
     },
     cutout: "70%", // Doughnut hole size
-  };
-
-  // Get articles for a chapter with budget details
-  const getArticlesForChapter = (chapterId) => {
-    const relatedArticles = articles.filter((ar) => ar.chapter_id === chapterId);
-    return relatedArticles.map((ar) => {
-      const relatedSousarticles = sousarticles.filter((sa) => sa.article_id === ar.id);
-      const spent = budgetDivisions
-        .filter(
-          (div) =>
-            div.article_id === ar.id ||
-            relatedSousarticles.some((sa) => sa.id === div.sousarticle_id)
-        )
-        .reduce((acc, div) => acc + (parseFloat(div.amount) || 0), 0);
-      const allocated = spent;
-      const remaining = allocated - spent;
-      const percentRemaining = allocated ? (remaining / allocated) * 100 : 0;
-      return { id: ar.id, name: ar.name, spent, remaining, percentRemaining };
-    });
-  };
-
-  // Get sousarticles for an article with budget details
-  const getSousarticlesForArticle = (articleId) => {
-    const relatedSousarticles = sousarticles.filter((sa) => sa.article_id === articleId);
-    return relatedSousarticles.map((sa) => {
-      const spent = budgetDivisions
-        .filter((div) => div.sousarticle_id === sa.id)
-        .reduce((acc, div) => acc + (parseFloat(div.amount) || 0), 0);
-      const allocated = spent;
-      const remaining = allocated - spent;
-      const percentRemaining = allocated ? (remaining / allocated) * 100 : 0;
-      return { id: sa.id, name: sa.name, spent, remaining, percentRemaining };
-    });
   };
 
   // Toggle chapter expansion
@@ -452,14 +468,18 @@ function Home() {
                                   {getSousarticlesForArticle(article.id).map((sa) => (
                                     <SousarticleItem key={sa.id}>
                                       <span style={{ marginLeft: 40 }} />
-                                      <span
+                                      <Span
                                         style={{
                                           backgroundColor: 'white',
                                           width: '100%',
+                                          height: 'fit-content',
                                         }}
                                       >
                                         {sa.name} - Spent: {sa.spent.toFixed(2)} DA
-                                      </span>
+                                      </Span>
+                                      <ProgressBar>
+                                        <Progress percent={sa.percentRemaining} />
+                                      </ProgressBar>
                                     </SousarticleItem>
                                   ))}
                                 </SousarticleList>
@@ -510,7 +530,7 @@ function Home() {
                 <SummaryItem>Total Transactions: {budgets.length + budgetDivisions.length}</SummaryItem>
                 <SummaryItem>Total Budget: {totalBudget.toFixed(2)} DA</SummaryItem>
                 <SummaryItem>Total Spent: {totalSpent.toFixed(2)} DA</SummaryItem>
-                <SummaryItem>Total Remaining: {remaining.toFixed(2)} DA</SummaryItem>
+                <SummaryItem>Total Remaining: {totalRemaining.toFixed(2)} DA</SummaryItem>
               </Summary>
             </div>
           </MainContent>

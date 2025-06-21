@@ -3,11 +3,8 @@ const path = require("path");
 const dbPath = path.resolve(__dirname, "budget.db");
 
 const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error("❌ Error opening database:", err.message);
-  } else {
-    console.log("✅ Connected to SQLite database.");
-  }
+  if (err) console.error("❌ Error opening database:", err.message);
+  else console.log("✅ Connected to SQLite database.");
 });
 
 const initSQL = `
@@ -63,23 +60,34 @@ CREATE TABLE IF NOT EXISTS budgets (
 
 -- BUDGET DIVISIONS
 CREATE TABLE IF NOT EXISTS budget_divisions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    budget_id INTEGER,
-    chapter_id INTEGER,
-    article_id INTEGER,
-    sousarticle_id INTEGER,
-    amount REAL,
-    FOREIGN KEY (budget_id) REFERENCES budgets(id),
-    FOREIGN KEY (chapter_id) REFERENCES chapters(id),
-    FOREIGN KEY (article_id) REFERENCES articles(id),
-    FOREIGN KEY (sousarticle_id) REFERENCES sousarticles(id)
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  budget_id INTEGER,
+  chapter_id INTEGER,
+  article_id INTEGER,
+  sousarticle_id INTEGER,
+  amount REAL,
+  FOREIGN KEY (budget_id) REFERENCES budgets(id),
+  FOREIGN KEY (chapter_id) REFERENCES chapters(id),
+  FOREIGN KEY (article_id) REFERENCES articles(id),
+  FOREIGN KEY (sousarticle_id) REFERENCES sousarticles(id)
 );
 
--- TOTAL BUDGET
+-- TOTAL BUDGET (optional table for summary)
 CREATE TABLE IF NOT EXISTS total_budget (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  amount INTEGER NOT NULL,
-  spent INTEGER NOT NULL
+  amount REAL NOT NULL,
+  spent REAL NOT NULL
+);
+
+-- EXPENSES
+CREATE TABLE IF NOT EXISTS expense (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  budget_division_id INTEGER NOT NULL,
+  amount REAL NOT NULL,
+  description TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (budget_division_id) REFERENCES budget_divisions(id) ON DELETE CASCADE
 );
 
 -- NOTIFICATIONS
@@ -87,7 +95,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   title TEXT NOT NULL,
   content TEXT NOT NULL,
-  amount INTEGER,
+  amount REAL,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 `;
@@ -103,7 +111,6 @@ const data = [
   ["1.7", "Frais d'études, de travaux et de prestation réalisés pour le compte de l'entité de recherche"],
   ["1.8", "Frais d'inscription et de participation aux colloques et séminaires scientifique en Algérie et à l'étranger"],
   ["1.9", "Frais de déplacement et de prise en charge des doctorants en Algérie"],
-
   ["2", "FOURNITURES"],
   ["2.1", "Produits chimiques"],
   ["2.2", "Produits consommables (y compris consommable informatique)"],
@@ -114,7 +121,6 @@ const data = [
   ["2.7", "Fournitures des besoins de laboratoires (animaux, plantes etc.…"],
   ["2.8", "Matériels, instrument et petits outillages scientifiques"],
   ["2.9", "Approvisionnement en gaz spécifique au laboratoire"],
-
   ["3", "CHARGES ANNEXES"],
   ["3.1", "Impression et édition des documents scientifiques et techniques"],
   ["3.2", "Frais de PTT (fax, internet, messagerie express, Frais d'installation de réseau téléphonique) et affranchissement postal"],
@@ -124,10 +130,8 @@ const data = [
   ["3.6", "Frais de traduction des documents scientifiques"],
   ["3.7", "Frais de publicité et publications"],
   ["3.8", "Conception, réalisation et maintenance de site web"],
-
   ["4", "PARC AUTOMOBILE"],
   ["4.1", "Location de véhicules et engins pour les travaux de recherche à réaliser sur terrain"],
-
   ["5", "FRAIS DE VALORISATION ET DE DEVELOPPEMENT TECHNOLOGIQUE"],
   ["5.1", "Frais d'accompagnement des porteurs de projets de recherche en Algérie"],
   ["5.2", "Frais de propriété intellectuelle servis au profit des institutions homologuées en Algérie et à l'étranger"],
@@ -143,14 +147,12 @@ const data = [
   ["5.6", "Frais d'incubation"],
   ["5.7", "Frais de service à l'innovation"],
   ["5.8", "Frais de conception et de réalisation de prototypes, maquettes, préséries, installations pilotes et démonstrations"],
-
   ["6", "RETRIBUTION DES ACTIVITES DES CHERCHEURS"],
   ["6.1", "Rétribution des activités de recherche des chercheurs mobilisés dans le cadre des programmes nationaux de recherche"],
   ["6.2", "Sécurité sociale"],
   ["6.2.1", "Régime général"],
   ["6.2.2", "Assurance chômage"],
   ["6.2.3", "Retraite anticipée"],
-
   ["7", "Maintenance des équipements scientifique, informatique et matériels de reprographie"],
   ["8", "Renouvellement des équipements scientifique et informatique"],
 ];
@@ -177,7 +179,6 @@ function insertInitialData() {
       try {
         for (const [code, name] of data) {
           const parts = code.split(".");
-
           if (parts.length === 1) {
             const chapterId = await runAsync(insertChapter, [name]);
             chapterMap[code] = chapterId;
@@ -208,6 +209,7 @@ function insertInitialData() {
   });
 }
 
+// Initialize database
 db.serialize(() => {
   db.exec(initSQL, async (err) => {
     if (err) {

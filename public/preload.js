@@ -48,4 +48,9 @@ contextBridge.exposeInMainWorld("api", {
     getTotalBudget: () => ipcRenderer.invoke("get-total_budget"),
     addTotalBudget: (budget) => ipcRenderer.invoke("add-total_budget", budget),
     updateTotalBudget: (budget) => ipcRenderer.invoke("update-total_budget", budget),
+
+    // Expenses
+    getExpensesByDivision: (divisionId) => ipcRenderer.invoke("get-expenses-by-division", divisionId),
+    addExpense: (expense) => ipcRenderer.invoke("add-expense", expense),
+
 });

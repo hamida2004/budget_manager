@@ -10,6 +10,7 @@ import ManageBudgets from "./pages/ManageBudgets";
 import Notifications from "./pages/Notifications";
 import BudgetDevisions from "./pages/BudgetDevisions";
 import Report from "./pages/Report";
+import ExpenseManagments from "./pages/ExpenseManagments";
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/expenses" element={<ExpenseManagments />} />
             <Route path="/report" element={<Report/>} />
           </Routes>
         </UserProvider>

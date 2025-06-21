@@ -82,12 +82,24 @@ db.createCrudHandlers = (table, fields) => {
   });
 };
 
+// Custom Handlers for Expenses
+ipcMain.handle("get-expenses-by-division", async (_, divisionId) => {
+  try {
+    const rows = await dbAll("SELECT * FROM expense WHERE budget_division_id = ?", [divisionId]);
+    return rows;
+  } catch (err) {
+    throw err;
+  }
+});
+
 db.createCrudHandlers("users", ["email", "username", "password"]);
 db.createCrudHandlers("laboratory", ["name", "wilaya", "univ"]);
 db.createCrudHandlers("chapters", ["name"]);
 db.createCrudHandlers("articles", ["name", "chapter_id"]);
 db.createCrudHandlers("sousarticles", ["name", "article_id"]);
 db.createCrudHandlers("budgets", ["year", "type", "total_amount", "spent", "created_at"]);
-db.createCrudHandlers("budget_divisions", ["budget_id","chapter_id","article_id", "sousarticle_id", "amount", "created_at"]);
+db.createCrudHandlers("budget_divisions", ["budget_id", "chapter_id", "article_id", "sousarticle_id", "amount", "created_at"]);
 db.createCrudHandlers("total_budget", ["amount", "spent"]);
 db.createCrudHandlers("notifications", ["title", "content", "amount", "created_at"]);
+db.createCrudHandlers("expense", ["budget_division_id", "amount", "description", "created_at", "updated_at"]);
+

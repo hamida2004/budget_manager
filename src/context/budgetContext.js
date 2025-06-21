@@ -4,46 +4,42 @@ const BudgetContext = createContext();
 
 export const BudgetProvider = ({ children }) => {
   const [totalBudget, setTotalBudget] = useState(0);
-  const [expenses, setExpenses] = useState([]);
   const [budgets, setBudgets] = useState([]);
+  const [budgetDivisions, setBudgetDivisions] = useState([]);
 
   const refreshBudgets = useCallback(async () => {
     try {
       const fetchedBudgets = await window.api.getBudgets();
       setBudgets(fetchedBudgets);
-      const total = fetchedBudgets.reduce((acc, b) => acc + b.total_amount, 0);
+      const total = fetchedBudgets.reduce((acc, b) => acc + (b.total_amount || 0), 0);
       setTotalBudget(total);
     } catch (error) {
       console.error("Error fetching budgets:", error);
     }
   }, []);
 
+  const refreshBudgetDivisions = useCallback(async () => {
+    try {
+      const fetchedDivisions = await window.api.getBudgetDivisions();
+      setBudgetDivisions(fetchedDivisions || []);
+    } catch (error) {
+      console.error("Error fetching budget divisions:", error);
+    }
+  }, []);
+
   useEffect(() => {
     refreshBudgets();
-  }, [refreshBudgets]);
-
-  const addExpense = (expense) => {
-    setExpenses((prev) => [...prev, { ...expense, id: Date.now() }]); // Add unique ID
-  };
-
-  const deleteExpense = (id) => {
-    setExpenses((prev) => prev.filter((exp) => exp.id !== id));
-  };
-
-  const totalSpent = expenses.reduce((acc, exp) => acc + (exp.amount || 0), 0);
-  const remainingBudget = totalBudget - totalSpent;
+    refreshBudgetDivisions();
+  }, [refreshBudgets, refreshBudgetDivisions]);
 
   return (
     <BudgetContext.Provider
       value={{
         totalBudget,
         budgets,
-        expenses,
-        addExpense,
-        deleteExpense,
-        totalSpent,
-        remainingBudget,
+        budgetDivisions,
         refreshBudgets,
+        refreshBudgetDivisions,
       }}
     >
       {children}
