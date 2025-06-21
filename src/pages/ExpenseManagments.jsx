@@ -6,6 +6,7 @@ import Nav from "../components/nav";
 import SideBar from "../components/SideBar";
 import { useUser } from "../context/userContext";
 import { MdSave } from "react-icons/md";
+import jsPDF from "jspdf";
 
 const Container = styled.div`
   padding: 40px;
@@ -74,6 +75,22 @@ const ExpenseItem = styled.li`
   align-items: center;
   justify-content: space-between;
   flex-direction: column;
+`;
+
+const GeneratePDFButton = styled.button`
+  background-color: #001A82;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  &:hover {
+    background-color: #0033a0;
+  }
 `;
 
 function ExpenseManagments() {
@@ -185,11 +202,178 @@ function ExpenseManagments() {
 
   const getDivisionsForItem = (itemId, type) => {
     return budgetDivisions.filter((div) =>
-      (type === "chapter" && div.chapter_id === itemId ) ||
+      (type === "chapter" && div.chapter_id === itemId) ||
       (type === "article" && div.article_id === itemId) ||
       (type === "sousarticle" && div.sousarticle_id === itemId)
     );
   };
+
+  const generatePDF = () => {
+    const pdf = new jsPDF("p", "pt", "a4");
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 40;
+    const lineHeight = 15;
+    const tableStartY = 160;
+    let y = tableStartY;
+    const tableWidth = pageWidth - 2 * margin;
+    const colWidths = [tableWidth * 0.4, tableWidth * 0.3, tableWidth * 0.3];
+    let isFirstPage = true;
+
+    const addHeader = () => {
+      if (!isFirstPage) return;
+      pdf.setFont("Helvetica", "normal");
+      pdf.setFontSize(12);
+      pdf.text("People's Democratic Republic of Algeria", margin, 40);
+      pdf.text("Expense Report", margin, 60);
+      pdf.text(`Generated on: ${new Date().toLocaleString("en-US", { timeZone: "CET" })}`, margin, 80);
+      pdf.text(`User: ${user?.email || "N/A"}`, margin, 100);
+    };
+
+    const checkPageBreak = (additionalHeight) => {
+      if (y + additionalHeight > pageHeight - margin) {
+        pdf.addPage();
+        y = 60;
+        isFirstPage = false;
+        return true;
+      }
+      return false;
+    };
+
+    const drawTableRow = (label, amountSpent, amountRemaining, indent = 0, isBold = false) => {
+      checkPageBreak(lineHeight + 10);
+      const wrappedLabel = pdf.splitTextToSize(label, colWidths[0] - indent);
+      const lineCount = wrappedLabel.length;
+      const rowHeight = lineHeight * lineCount;
+
+      pdf.setFont("Helvetica", isBold ? "bold" : "normal");
+      pdf.setFontSize(10);
+      pdf.text(wrappedLabel, margin + indent, y + 10, { maxWidth: colWidths[0] - indent });
+      pdf.text(amountSpent || "0.00 DA", margin + colWidths[0] + colWidths[1] - 5, y + 10, { align: "right" });
+      pdf.text(amountRemaining || "0.00 DA", margin + tableWidth - 5, y + 10, { align: "right" });
+
+      pdf.rect(margin, y, colWidths[0], rowHeight);
+      pdf.rect(margin + colWidths[0], y, colWidths[1], rowHeight);
+      pdf.rect(margin + colWidths[0] + colWidths[1], y, colWidths[2], rowHeight);
+      y += rowHeight > lineHeight ? rowHeight : lineHeight;
+    };
+
+    // --- Header ---
+    addHeader();
+    pdf.setFont("Helvetica", "bold");
+    pdf.setFontSize(10);
+    pdf.text("Description", margin + 10, y + 10);
+    pdf.text("Amount Spent (DA)", margin + colWidths[0] + colWidths[1] - 5, y + 10, { align: "right" });
+    pdf.text("Remaining (DA)", margin + tableWidth - 5, y + 10, { align: "right" });
+    pdf.rect(margin, y, colWidths[0], lineHeight);
+    pdf.rect(margin + colWidths[0], y, colWidths[1], lineHeight);
+    pdf.rect(margin + colWidths[0] + colWidths[1], y, colWidths[2], lineHeight);
+    y += lineHeight;
+
+    let grandTotalSpent = 0;
+    let grandTotalRemaining = 0;
+
+    chapters.forEach((chapter) => {
+      const chapterDivisions = getDivisionsForItem(chapter.id, "chapter");
+      let chapterTotalSpent = 0;
+      let chapterTotalRemaining = 0;
+
+      // Chapter Row
+      drawTableRow(chapter.name, "", "", 10, true);
+
+      if (chapterDivisions.length > 0) {
+        chapterDivisions.forEach((div) => {
+          const spent = (expenses[div.id] || []).reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
+          const allocated = parseFloat(div.amount) || 0;
+          const remaining = allocated - spent;
+          if (spent > 0 || remaining > 0) {
+            drawTableRow("Direct Allocation", formatDA(spent), formatDA(remaining), 20);
+            chapterTotalSpent += spent;
+            chapterTotalRemaining += remaining;
+          }
+        });
+      }
+
+      const chapterArticles = articles.filter((ar) => ar.chapter_id === chapter.id);
+      chapterArticles.forEach((article) => {
+        const articleDivisions = getDivisionsForItem(article.id, "article");
+        let articleTotalSpent = 0;
+        let articleTotalRemaining = 0;
+
+        // Article Row
+        drawTableRow(article.name, "", "", 20);
+
+        if (articleDivisions.length > 0) {
+          articleDivisions.forEach((div) => {
+            const spent = (expenses[div.id] || []).reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
+            const allocated = parseFloat(div.amount) || 0;
+            const remaining = allocated - spent;
+            if (spent > 0 || remaining > 0) {
+              drawTableRow(article.name, formatDA(spent), formatDA(remaining), 40);
+              articleTotalSpent += spent;
+              articleTotalRemaining += remaining;
+            }
+          });
+        }
+
+        const articleSousarticles = sousarticles.filter((sa) => sa.article_id === article.id);
+        articleSousarticles.forEach((sousarticle) => {
+          const sousarticleDivisions = getDivisionsForItem(sousarticle.id, "sousarticle");
+          let sousarticleTotalSpent = 0;
+          let sousarticleTotalRemaining = 0;
+
+          // Sousarticle Row
+          drawTableRow(sousarticle.name, "", "", 40);
+
+          sousarticleDivisions.forEach((div) => {
+            const spent = (expenses[div.id] || []).reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
+            const allocated = parseFloat(div.amount) || 0;
+            const remaining = allocated - spent;
+            if (spent > 0 || remaining > 0) {
+              drawTableRow(sousarticle.name, formatDA(spent), formatDA(remaining), 60);
+              sousarticleTotalSpent += spent;
+              sousarticleTotalRemaining += remaining;
+            }
+          });
+
+          // Sousarticle Total
+          if (sousarticleTotalSpent > 0 || sousarticleTotalRemaining > 0) {
+            drawTableRow(`Total ${sousarticle.name}`, formatDA(sousarticleTotalSpent), formatDA(sousarticleTotalRemaining), 50, true);
+            articleTotalSpent += sousarticleTotalSpent;
+            articleTotalRemaining += sousarticleTotalRemaining;
+          }
+        });
+
+        // Article Total
+        if (articleTotalSpent > 0 || articleTotalRemaining > 0) {
+          drawTableRow(`Total ${article.name}`, formatDA(articleTotalSpent), formatDA(articleTotalRemaining), 30, true);
+          chapterTotalSpent += articleTotalSpent;
+          chapterTotalRemaining += articleTotalRemaining;
+        }
+      });
+
+      // Chapter Total
+      if (chapterTotalSpent > 0 || chapterTotalRemaining > 0) {
+        drawTableRow(`Total ${chapter.name}`, formatDA(chapterTotalSpent), formatDA(chapterTotalRemaining), 10, true);
+        grandTotalSpent += chapterTotalSpent;
+        grandTotalRemaining += chapterTotalRemaining;
+      }
+    });
+
+    // Grand Total
+    drawTableRow("TOTAL GENERAL DES DEPENSES", formatDA(grandTotalSpent), formatDA(grandTotalRemaining), 10, true);
+
+    pdf.save("expense-report.pdf");
+    alert("✅ PDF generated successfully!");
+  };
+
+  // Format DA helper
+  function formatDA(value) {
+    return `${value.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })} DA`;
+  }
 
   if (loading) {
     return (
@@ -271,6 +455,10 @@ function ExpenseManagments() {
             );
           })}
         </Section>
+        <GeneratePDFButton onClick={generatePDF}>
+          <MdSave size={20} />
+          Generate PDF Expense Report
+        </GeneratePDFButton>
         {sidebarOpen && <SideBar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
       </Container>
     </>
