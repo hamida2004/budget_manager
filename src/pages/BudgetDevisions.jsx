@@ -1,6 +1,3 @@
-
-
-
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
@@ -78,7 +75,6 @@ const ChapterTitle = styled.div`
   justify-content: center;
   gap: 40px;
 `;
-
 
 const BudgetSummary = styled.div`
   display: flex;
@@ -169,8 +165,6 @@ const BudgetDevisions = () => {
   const [newChapterName, setNewChapterName] = useState("");
   const [showChapterInput, setShowChapterInput] = useState(false);
 
-
-
   const findWilaya = (id) => {
     const wilaya = wilayas.find((w) => w.id === parseInt(id));
     setWilaya(wilaya ? wilaya.wilaya : '');
@@ -245,168 +239,168 @@ const BudgetDevisions = () => {
   const totalBudget = budgets.reduce((sum, budget) => sum + (budget.total_amount || 0), 0);
   const totalSpent = budgets.reduce((sum, budget) => sum + (budget.spent || 0), 0);
   const totalRemaining = totalBudget - totalSpent;
-function generatePDF() {
-  try {
-    findWilaya(laboratory.wilaya);
-    const pdf = new jsPDF("p", "pt", "a4");
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = 40;
-    const lineHeight = 15;
-    const tableStartY = 160;
-    let y = tableStartY;
-    const tableWidth = pageWidth - 2 * margin;
-    const colWidths = [tableWidth * 0.6, tableWidth * 0.2, tableWidth * 0.2];
-    let isFirstPage = true;
 
-    const addHeader = () => {
-      if (!isFirstPage) return;
-      pdf.setFont("Helvetica", "normal");
-      pdf.setFontSize(12);
-      pdf.text("People's Democratic Republic of Algeria", margin, 40);
-      if (laboratory) {
-        pdf.text(`Ministry of Higher Education and Scientific Research`, margin, 60);
-        pdf.text(`${laboratory.univ || "N/A"}`, margin, 80);
-        pdf.text(`Faculty of Exact Science`, margin, 100);
-        pdf.text(`Laboratory: ${laboratory.name || "N/A"}`, margin, 120);
-        pdf.text(`Wilaya: ${wilaya || laboratory.wilaya || "N/A"}`, margin, 140);
-      }
-    };
+  function generatePDF() {
+    try {
+      findWilaya(laboratory.wilaya);
+      const pdf = new jsPDF("p", "pt", "a4");
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 40;
+      const lineHeight = 15;
+      const tableStartY = 160;
+      let y = tableStartY;
+      const tableWidth = pageWidth - 2 * margin;
+      const colWidths = [tableWidth * 0.6, tableWidth * 0.2, tableWidth * 0.2];
+      let isFirstPage = true;
 
-    const checkPageBreak = (additionalHeight) => {
-      if (y + additionalHeight > pageHeight - margin) {
-        pdf.addPage();
-        y = 60;
-        isFirstPage = false;
-        return true;
-      }
-      return false;
-    };
+      const addHeader = () => {
+        if (!isFirstPage) return;
+        pdf.setFont("Helvetica", "normal");
+        pdf.setFontSize(12);
+        pdf.text("People's Democratic Republic of Algeria", margin, 40);
+        if (laboratory) {
+          pdf.text(`Ministry of Higher Education and Scientific Research`, margin, 60);
+          pdf.text(`${laboratory.univ || "N/A"}`, margin, 80);
+          pdf.text(`Faculty of Exact Science`, margin, 100);
+          pdf.text(`Laboratory: ${laboratory.name || "N/A"}`, margin, 120);
+          pdf.text(`Wilaya: ${wilaya || laboratory.wilaya || "N/A"}`, margin, 140);
+        }
+      };
 
-    const drawTableRow = (label, amountAnnual, amountAdditional, indent = 0, isBold = false) => {
-      checkPageBreak(lineHeight + 10);
-      const wrappedLabel = pdf.splitTextToSize(label, colWidths[0] - indent);
-      const lineCount = wrappedLabel.length;
-      const rowHeight = lineHeight * lineCount;
+      const checkPageBreak = (additionalHeight) => {
+        if (y + additionalHeight > pageHeight - margin) {
+          pdf.addPage();
+          y = 60;
+          isFirstPage = false;
+          return true;
+        }
+        return false;
+      };
 
-      pdf.setFont("Helvetica", isBold ? "bold" : "normal");
+      const drawTableRow = (label, amountAnnual, amountAdditional, indent = 0, isBold = false) => {
+        checkPageBreak(lineHeight + 10);
+        const wrappedLabel = pdf.splitTextToSize(label, colWidths[0] - indent);
+        const lineCount = wrappedLabel.length;
+        const rowHeight = lineHeight * lineCount;
+
+        pdf.setFont("Helvetica", isBold ? "bold" : "normal");
+        pdf.setFontSize(10);
+        pdf.text(wrappedLabel, margin + indent, y + 10, { maxWidth: colWidths[0] - indent });
+        pdf.text(amountAnnual || "0.00 DA", margin + colWidths[0] + colWidths[1] - 5, y + 10, { align: "right" });
+        pdf.text(amountAdditional || "0.00 DA", margin + tableWidth - 5, y + 10, { align: "right" });
+
+        pdf.rect(margin, y, colWidths[0], rowHeight);
+        pdf.rect(margin + colWidths[0], y, colWidths[1], rowHeight);
+        pdf.rect(margin + colWidths[0] + colWidths[1], y, colWidths[2], rowHeight);
+        y += rowHeight > lineHeight ? rowHeight : lineHeight;
+      };
+
+      // --- Header ---
+      addHeader();
+      pdf.setFont("Helvetica", "bold");
       pdf.setFontSize(10);
-      pdf.text(wrappedLabel, margin + indent, y + 10, { maxWidth: colWidths[0] - indent });
-      pdf.text(amountAnnual || "0.00 DA", margin + colWidths[0] + colWidths[1] - 5, y + 10, { align: "right" });
-      pdf.text(amountAdditional || "0.00 DA", margin + tableWidth - 5, y + 10, { align: "right" });
+      pdf.text("Libellé", margin + 10, y + 10);
+      pdf.text("Amount (Annual)", margin + colWidths[0] + colWidths[1] - 5, y + 10, { align: "right" });
+      pdf.text("Amount (Additional)", margin + tableWidth - 5, y + 10, { align: "right" });
+      pdf.rect(margin, y, colWidths[0], lineHeight);
+      pdf.rect(margin + colWidths[0], y, colWidths[1], lineHeight);
+      pdf.rect(margin + colWidths[0] + colWidths[1], y, colWidths[2], lineHeight);
+      y += lineHeight;
 
-      pdf.rect(margin, y, colWidths[0], rowHeight);
-      pdf.rect(margin + colWidths[0], y, colWidths[1], rowHeight);
-      pdf.rect(margin + colWidths[0] + colWidths[1], y, colWidths[2], rowHeight);
-      y += rowHeight > lineHeight ? rowHeight : lineHeight;
-    };
+      let grandTotal = 0;
 
-    // --- Header ---
-    addHeader();
-    pdf.setFont("Helvetica", "bold");
-    pdf.setFontSize(10);
-    pdf.text("Libellé", margin + 10, y + 10);
-    pdf.text("Amount (Annual)", margin + colWidths[0] + colWidths[1] - 5, y + 10, { align: "right" });
-    pdf.text("Amount (Additional)", margin + tableWidth - 5, y + 10, { align: "right" });
-    pdf.rect(margin, y, colWidths[0], lineHeight);
-    pdf.rect(margin + colWidths[0], y, colWidths[1], lineHeight);
-    pdf.rect(margin + colWidths[0] + colWidths[1], y, colWidths[2], lineHeight);
-    y += lineHeight;
+      chapters.forEach((chapter) => {
+        const chapterArticles = articles.filter((ar) => ar.chapter_id === chapter.id);
+        let chapterTotal = 0;
 
-    let grandTotal = 0;
+        // Chapter Row
+        drawTableRow(chapter.name, "", "", 10, true);
 
-    chapters.forEach((chapter) => {
-      const chapterArticles = articles.filter((ar) => ar.chapter_id === chapter.id);
-      let chapterTotal = 0;
+        if (chapterArticles.length === 0) {
+          // Check for chapter-level distribution
+          const initialDivision = budgetDivisions.find((div) => div.chapter_id === chapter.id && !div.article_id && div.budget_id === 1);
+          const additionalDivision = budgetDivisions.find((div) => div.chapter_id === chapter.id && !div.article_id && div.budget_id !== 1);
+          const amountAnnual = initialDivision ? parseFloat(initialDivision.amount) : 0;
+          const amountAdditional = additionalDivision ? parseFloat(additionalDivision.amount) : 0;
+          chapterTotal += amountAnnual + amountAdditional;
 
-      // Chapter Row
-      drawTableRow(chapter.name, "", "", 10, true);
+          if (amountAnnual > 0 || amountAdditional > 0) {
+            drawTableRow("Total Chapter", formatDA(amountAnnual), formatDA(amountAdditional), 20, true);
+          }
+        } else {
+          chapterArticles.forEach((article) => {
+            const articleDivisions = budgetDivisions.filter(
+              (div) => div.article_id === article.id && !div.sousarticle_id
+            );
+            let articleTotal = 0;
 
-      if (chapterArticles.length === 0) {
-        // Check for chapter-level distribution
-        const initialDivision = budgetDivisions.find((div) => div.chapter_id === chapter.id && !div.article_id && div.budget_id === 1);
-        const additionalDivision = budgetDivisions.find((div) => div.chapter_id === chapter.id && !div.article_id && div.budget_id !== 1);
-        const amountAnnual = initialDivision ? parseFloat(initialDivision.amount) : 0;
-        const amountAdditional = additionalDivision ? parseFloat(additionalDivision.amount) : 0;
-        chapterTotal += amountAnnual + amountAdditional;
+            // Article Row
+            drawTableRow(article.name, "", "", 20);
 
-        if (amountAnnual > 0 || amountAdditional > 0) {
-          drawTableRow("Total Chapter", formatDA(amountAnnual), formatDA(amountAdditional), 20, true);
+            if (articleDivisions.length > 0) {
+              articleDivisions.forEach((division) => {
+                const amountAnnual = division.budget_id === 1 ? parseFloat(division.amount) : 0;
+                const amountAdditional = division.budget_id !== 1 ? parseFloat(division.amount) : 0;
+                if (amountAnnual > 0 || amountAdditional > 0) {
+                  drawTableRow(article.name, formatDA(amountAnnual), formatDA(amountAdditional), 40);
+                  articleTotal += amountAnnual + amountAdditional;
+                }
+              });
+            }
+
+            const articleSousarticles = sousarticles.filter((sa) => sa.article_id === article.id);
+            if (articleSousarticles.length > 0) {
+              articleSousarticles.forEach((sousarticle) => {
+                const initialDivision = budgetDivisions.find(
+                  (div) => div.sousarticle_id === sousarticle.id && div.budget_id === 1
+                );
+                const additionalDivision = budgetDivisions.find(
+                  (div) => div.sousarticle_id === sousarticle.id && div.budget_id !== 1
+                );
+                const amountAnnual = initialDivision ? parseFloat(initialDivision.amount) : 0;
+                const amountAdditional = additionalDivision ? parseFloat(additionalDivision.amount) : 0;
+                if (amountAnnual > 0 || amountAdditional > 0) {
+                  drawTableRow(sousarticle.name, formatDA(amountAnnual), formatDA(amountAdditional), 40);
+                  articleTotal += amountAnnual + amountAdditional;
+                }
+              });
+            } else if (articleDivisions.length === 0) {
+              // Skip empty rows
+            }
+
+            // Article Total
+            if (articleTotal > 0) {
+              chapterTotal += articleTotal;
+            }
+          });
+          // Chapter Total
+          if (chapterTotal > 0) {
+            drawTableRow("Total Article", "", formatDA(chapterTotal), 10, true);
+          }
         }
-      } else {
-        chapterArticles.forEach((article) => {
-          const articleDivisions = budgetDivisions.filter(
-            (div) => div.article_id === article.id && !div.sousarticle_id
-          );
-          let articleTotal = 0;
 
-          // Article Row
-          drawTableRow(article.name, "", "", 20);
+        grandTotal += chapterTotal;
+      });
 
-          if (articleDivisions.length > 0) {
+      // Grand Total
+      drawTableRow("TOTAL GENERAL DU BUDGET", "", formatDA(grandTotal), 10, true);
 
-            articleDivisions.forEach((division) => {
-              const amountAnnual = division.budget_id === 1 ? parseFloat(division.amount) : 0;
-              const amountAdditional = division.budget_id !== 1 ? parseFloat(division.amount) : 0;
-              if (amountAnnual > 0 || amountAdditional > 0) {
-                drawTableRow(article.name, formatDA(amountAnnual), formatDA(amountAdditional), 40);
-                articleTotal += amountAnnual + amountAdditional;
-              }
-            });
-          }
+      pdf.save("budget-report.pdf");
+      alert("✅ PDF generated successfully!");
+    } catch (err) {
+      console.error("❌ Error generating PDF:", err);
+      alert("Failed to generate PDF. Please check the console.");
+    }
 
-          const articleSousarticles = sousarticles.filter((sa) => sa.article_id === article.id);
-          if (articleSousarticles.length > 0) {
-            articleSousarticles.forEach((sousarticle) => {
-              const initialDivision = budgetDivisions.find(
-                (div) => div.sousarticle_id === sousarticle.id && div.budget_id === 1
-              );
-              const additionalDivision = budgetDivisions.find(
-                (div) => div.sousarticle_id === sousarticle.id && div.budget_id !== 1
-              );
-              const amountAnnual = initialDivision ? parseFloat(initialDivision.amount) : 0;
-              const amountAdditional = additionalDivision ? parseFloat(additionalDivision.amount) : 0;
-              if (amountAnnual > 0 || amountAdditional > 0) {
-                drawTableRow(sousarticle.name, formatDA(amountAnnual), formatDA(amountAdditional), 40);
-                articleTotal += amountAnnual + amountAdditional;
-              }
-            });
-          } else if (articleDivisions.length === 0) {
-            // Skip empty rows
-          }
-
-          // Article Total
-          if (articleTotal > 0) {
-            chapterTotal += articleTotal;
-          }
-        });
-        // Chapter Total
-        if (chapterTotal > 0) {
-          drawTableRow("Total Article", "", formatDA(chapterTotal), 10, true);
-        }
-      }
-
-      grandTotal += chapterTotal;
-    });
-
-    // Grand Total
-    drawTableRow("TOTAL GENERAL DU BUDGET", "", formatDA(grandTotal), 10, true);
-
-    pdf.save("budget-report.pdf");
-    alert("✅ PDF generated successfully!");
-  } catch (err) {
-    console.error("❌ Error generating PDF:", err);
-    alert("Failed to generate PDF. Please check the console.");
+    // Format DA helper
+    function formatDA(value) {
+      return `${value.toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })} DA`;
+    }
   }
-
-  // Format DA helper
-  function formatDA(value) {
-    return `${value.toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    })} DA`;
-  }
-}
 
   const toggleChapter = (id) => {
     setOpenChapters((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -590,12 +584,6 @@ function generatePDF() {
         amount
       });
 
-      await window.api.addNotification({
-        title: "New Expense Added",
-        content: `An expense of ${parseFloat(amount).toFixed(2)} DA was added for "${name}" in Budget ${budgetId}.`,
-        amount: amount,
-      });
-
       setExpenseInputs((prev) => ({ ...prev, [`${key}_${budgetId}`]: 0 }));
       fetchBudgetDivisions();
     } catch (error) {
@@ -640,10 +628,6 @@ function generatePDF() {
       (type === 'sousarticle' && div.sousarticle_id === id)
     );
   };
-
-  // ... (Previous imports, styled components, and other code remain unchanged)
-
-  // Inside the BudgetDevisions component, replace the relevant JSX in the return statement:
 
   return (
     <>
@@ -1059,8 +1043,7 @@ function generatePDF() {
         {sidebarOpen && <SideBar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
       </Container>
     </>
-  )
+  );
 };
 
-// ... (Rest of the component code, including other functions like generatePDF, remains unchanged)
 export default BudgetDevisions;

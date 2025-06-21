@@ -66,6 +66,14 @@ const ExpenseInput = styled.input`
   margin-right: 10px;
 `;
 
+const DescriptionInput = styled.input`
+  width: 200px;
+  padding: 5px;
+  border: 1px solid #001A82;
+  border-radius: 8px;
+  margin-right: 10px;
+`;
+
 const ExpenseItem = styled.li`
   box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.2);
   border-radius: 8px;
@@ -102,6 +110,7 @@ function ExpenseManagments() {
   const [sousarticles, setSousarticles] = useState([]);
   const [openChapters, setOpenChapters] = useState({});
   const [expenseInputs, setExpenseInputs] = useState({});
+  const [descriptionInputs, setDescriptionInputs] = useState({});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [budgetDivisions, setBudgetDivisions] = useState([]);
@@ -158,10 +167,18 @@ function ExpenseManagments() {
     }));
   };
 
+  const handleDescriptionInput = (divisionId, value) => {
+    setDescriptionInputs((prev) => ({
+      ...prev,
+      [divisionId]: value,
+    }));
+  };
+
   const saveExpense = async (e, divisionId, name) => {
     e.preventDefault();
     setError("");
     const amount = expenseInputs[divisionId];
+    const description = descriptionInputs[divisionId] || "";
     const division = budgetDivisions.find((d) => d.id === divisionId);
     if (!division) {
       setError("Budget division not found.");
@@ -187,6 +204,7 @@ function ExpenseManagments() {
       const newExpense = await window.api.addExpense({
         budget_division_id: divisionId,
         amount,
+        description,
         name,
       });
       setExpenses((prev) => ({
@@ -194,6 +212,14 @@ function ExpenseManagments() {
         [divisionId]: [...(prev[divisionId] || []), newExpense],
       }));
       setExpenseInputs((prev) => ({ ...prev, [divisionId]: 0 }));
+      setDescriptionInputs((prev) => ({ ...prev, [divisionId]: "" }));
+
+      // Add notification for the new expense
+      await window.api.addNotification({
+        title: "New Expense Added",
+        content: `An expense of ${parseFloat(amount).toFixed(2)} DA was added for "${name}" in Budget ${division.budget_id}. Description: ${description || "No description"}`,
+        amount: amount,
+      });
     } catch (error) {
       console.error("Error saving expense:", error);
       setError(`Failed to save expense: ${error.message}`);
@@ -335,18 +361,11 @@ function ExpenseManagments() {
               sousarticleTotalRemaining += remaining;
             }
           });
-
-          // Sousarticle Total
-          if (sousarticleTotalSpent > 0 || sousarticleTotalRemaining > 0) {
-            drawTableRow(`Total ${sousarticle.name}`, formatDA(sousarticleTotalSpent), formatDA(sousarticleTotalRemaining), 50, true);
-            articleTotalSpent += sousarticleTotalSpent;
-            articleTotalRemaining += sousarticleTotalRemaining;
-          }
         });
 
         // Article Total
         if (articleTotalSpent > 0 || articleTotalRemaining > 0) {
-          drawTableRow(`Total ${article.name}`, formatDA(articleTotalSpent), formatDA(articleTotalRemaining), 30, true);
+          drawTableRow(`Total ${article.name}`, formatDA(articleTotalSpent), formatDA(articleTotalRemaining), 20, true);
           chapterTotalSpent += articleTotalSpent;
           chapterTotalRemaining += articleTotalRemaining;
         }
@@ -422,7 +441,9 @@ function ExpenseManagments() {
                                 div={div}
                                 name={ar.name}
                                 value={expenseInputs[div.id] || ""}
+                                description={descriptionInputs[div.id] || ""}
                                 onChange={handleExpenseInput}
+                                onDescriptionChange={handleDescriptionInput}
                                 onSave={saveExpense}
                                 expenses={expenses[div.id] || []}
                               />
@@ -442,7 +463,9 @@ function ExpenseManagments() {
                               div={div}
                               name={sa.name}
                               value={expenseInputs[div.id] || ""}
+                              description={descriptionInputs[div.id] || ""}
                               onChange={handleExpenseInput}
+                              onDescriptionChange={handleDescriptionInput}
                               onSave={saveExpense}
                               expenses={expenses[div.id] || []}
                             />
@@ -465,7 +488,7 @@ function ExpenseManagments() {
   );
 }
 
-function ExpenseFormItem({ div, name, value, onChange, onSave, expenses }) {
+function ExpenseFormItem({ div, name, value, description, onChange, onDescriptionChange, onSave, expenses }) {
   const [remaining, setRemaining] = useState(0);
 
   useEffect(() => {
@@ -493,6 +516,12 @@ function ExpenseFormItem({ div, name, value, onChange, onSave, expenses }) {
           min="0"
           step="0.01"
           placeholder="Enter expense"
+        />
+        <DescriptionInput
+          type="text"
+          value={description}
+          onChange={(e) => onDescriptionChange(div.id, e.target.value)}
+          placeholder="Enter description"
         />
         <MdSave
           size={20}

@@ -115,6 +115,8 @@ function Report() {
   const [filteredExpenses, setFilteredExpenses] = useState({});
   const [error, setError] = useState("");
   const [openDivisions, setOpenDivisions] = useState({});
+  const [openArticles, setOpenArticles] = useState({});
+  const [openSousarticles, setOpenSousarticles] = useState({});
 
   const getItemName = (division) => {
     if (division.chapter_id) {
@@ -200,6 +202,14 @@ function Report() {
     setOpenDivisions((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const toggleArticle = (id) => {
+    setOpenArticles((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const toggleSousarticle = (id) => {
+    setOpenSousarticles((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
   const formatDA = (value) => {
     return `${value.toLocaleString("en-US", {
       minimumFractionDigits: 2,
@@ -231,10 +241,7 @@ function Report() {
         pdf.text(`Laboratory: ${laboratory.name || "N/A"}`, margin, 120);
         pdf.text(`Wilaya: ${laboratory.wilaya || "N/A"}`, margin, 140);
       }
-      pdf.text(`Report Period: ${fromDate} to ${toDate}`, margin, 160);
-      pdf.text(`Generated on: ${new Date().toLocaleString("en-US", { timeZone: "CET" })}`, margin, 180); // 10:34 AM CET, June 21, 2025
-      pdf.text(`User: ${user?.email || "N/A"}`, margin, 200);
-    };
+         };
 
     const checkPageBreak = (additionalHeight) => {
       if (y + additionalHeight > pageHeight - margin) {
@@ -246,7 +253,7 @@ function Report() {
       return false;
     };
 
-    const drawTableRow = (label, amountSpent, amountRemaining, indent = 0, isBold = false) => {
+    const drawTableRow = (label, amount, date, indent = 0, isBold = false) => {
       checkPageBreak(lineHeight + 10);
       const wrappedLabel = pdf.splitTextToSize(label, colWidths[0] - indent);
       const lineCount = wrappedLabel.length;
@@ -255,8 +262,8 @@ function Report() {
       pdf.setFont("Helvetica", isBold ? "bold" : "normal");
       pdf.setFontSize(10);
       pdf.text(wrappedLabel, margin + indent, y + 10, { maxWidth: colWidths[0] - indent });
-      pdf.text(amountSpent || "0.00 DA", margin + colWidths[0] + colWidths[1] - 5, y + 10, { align: "right" });
-      pdf.text(amountRemaining || "0.00 DA", margin + tableWidth - 5, y + 10, { align: "right" });
+      pdf.text(amount || "0.00 DA", margin + colWidths[0] + colWidths[1] - 5, y + 10, { align: "right" });
+      pdf.text(date || "", margin + tableWidth - 5, y + 10, { align: "right" });
 
       pdf.rect(margin, y, colWidths[0], rowHeight);
       pdf.rect(margin + colWidths[0], y, colWidths[1], rowHeight);
@@ -269,103 +276,29 @@ function Report() {
     pdf.setFont("Helvetica", "bold");
     pdf.setFontSize(10);
     pdf.text("Description", margin + 10, y + 10);
-    pdf.text("Amount Spent (DA)", margin + colWidths[0] + colWidths[1] - 5, y + 10, { align: "right" });
-    pdf.text("Remaining (DA)", margin + tableWidth - 5, y + 10, { align: "right" });
+    pdf.text("Amount (DA)", margin + colWidths[0] + colWidths[1] - 5, y + 10, { align: "right" });
+    pdf.text("Date", margin + tableWidth - 5, y + 10, { align: "right" });
     pdf.rect(margin, y, colWidths[0], lineHeight);
     pdf.rect(margin + colWidths[0], y, colWidths[1], lineHeight);
     pdf.rect(margin + colWidths[0] + colWidths[1], y, colWidths[2], lineHeight);
     y += lineHeight;
 
-    let grandTotalSpent = 0;
-    let grandTotalRemaining = 0;
+    const allFilteredExpenses = Object.values(filteredExpenses).flat();
+    const totalSpent = allFilteredExpenses.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
 
-    chapters.forEach((chapter) => {
-      const chapterDivisions = budgetDivisions.filter((div) => div.chapter_id === chapter.id);
-      let chapterTotalSpent = 0;
-      let chapterTotalRemaining = 0;
-
-      // Chapter Row
-      drawTableRow(chapter.name, "", "", 10, true);
-
-      chapterDivisions.forEach((div) => {
-        const spent = (filteredExpenses[div.id] || []).reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
-        const allocated = parseFloat(div.amount) || 0;
-        const remaining = allocated - spent;
-        if (spent > 0 || remaining > 0) {
-          drawTableRow(getItemName(div), formatDA(spent), formatDA(remaining), 20);
-          chapterTotalSpent += spent;
-          chapterTotalRemaining += remaining;
-        }
-      });
-
-      const chapterArticles = articles.filter((ar) => ar.chapter_id === chapter.id);
-      chapterArticles.forEach((article) => {
-        const articleDivisions = budgetDivisions.filter((div) => div.article_id === article.id);
-        let articleTotalSpent = 0;
-        let articleTotalRemaining = 0;
-
-        // Article Row
-        drawTableRow(article.name, "", "", 20);
-
-        articleDivisions.forEach((div) => {
-          const spent = (filteredExpenses[div.id] || []).reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
-          const allocated = parseFloat(div.amount) || 0;
-          const remaining = allocated - spent;
-          if (spent > 0 || remaining > 0) {
-            drawTableRow(getItemName(div), formatDA(spent), formatDA(remaining), 40);
-            articleTotalSpent += spent;
-            articleTotalRemaining += remaining;
-          }
-        });
-
-        const articleSousarticles = sousarticles.filter((sa) => sa.article_id === article.id);
-        articleSousarticles.forEach((sousarticle) => {
-          const sousarticleDivisions = budgetDivisions.filter((div) => div.sousarticle_id === sousarticle.id);
-          let sousarticleTotalSpent = 0;
-          let sousarticleTotalRemaining = 0;
-
-          // Sousarticle Row
-          drawTableRow(sousarticle.name, "", "", 40);
-
-          sousarticleDivisions.forEach((div) => {
-            const spent = (filteredExpenses[div.id] || []).reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
-            const allocated = parseFloat(div.amount) || 0;
-            const remaining = allocated - spent;
-            if (spent > 0 || remaining > 0) {
-              drawTableRow(getItemName(div), formatDA(spent), formatDA(remaining), 60);
-              sousarticleTotalSpent += spent;
-              sousarticleTotalRemaining += remaining;
-            }
-          });
-
-          // Sousarticle Total
-          if (sousarticleTotalSpent > 0 || sousarticleTotalRemaining > 0) {
-            drawTableRow(`Total ${sousarticle.name}`, formatDA(sousarticleTotalSpent), formatDA(sousarticleTotalRemaining), 50, true);
-            articleTotalSpent += sousarticleTotalSpent;
-            articleTotalRemaining += articleTotalRemaining;
-          }
-        });
-
-        // Article Total
-        if (articleTotalSpent > 0 || articleTotalRemaining > 0) {
-          drawTableRow(`Total ${article.name}`, formatDA(articleTotalSpent), formatDA(articleTotalRemaining), 30, true);
-          chapterTotalSpent += articleTotalSpent;
-          chapterTotalRemaining += articleTotalRemaining;
-        }
-      });
-
-      // Chapter Total
-      if (chapterTotalSpent > 0 || chapterTotalRemaining > 0) {
-        drawTableRow(`Total ${chapter.name}`, formatDA(chapterTotalSpent), formatDA(chapterTotalRemaining), 10, true);
-        grandTotalSpent += chapterTotalSpent;
-        grandTotalRemaining += chapterTotalRemaining;
-      }
+    allFilteredExpenses.forEach((exp) => {
+      const division = budgetDivisions.find((div) => div.id === exp.budget_division_id);
+      const name = division ? getItemName(division) : "Unknown";
+      const amount = `-${exp.amount.toFixed(2)} DA`;
+      const date = new Date(exp.created_at).toLocaleDateString();
+      drawTableRow(name, amount, date);
     });
 
-    // Grand Total
-    drawTableRow("TOTAL GENERAL DES DEPENSES", formatDA(grandTotalSpent), formatDA(grandTotalRemaining), 10, true);
+    // Total
+    drawTableRow("TOTAL EXPENSES", `${totalSpent.toFixed(2)} DA`, "", 10, true);
 
-    pdf.save("expense-report.pdf");
+    const currentDate = new Date().toISOString().split("T")[0]; // e.g., "2025-06-21"
+    pdf.save(`report-${currentDate}.pdf`);
     alert("✅ PDF generated successfully!");
   };
 
@@ -432,33 +365,136 @@ function Report() {
             <Button text="Filter" handleClick={handleFilter} />
           </FilterContainer>
           <List>
-            {budgetDivisions.map((div) => {
-              const filteredExp = filteredExpenses[div.id] || [];
-              if (filteredExp.length === 0) return null;
-              const name = getItemName(div);
-              const totalSpent = filteredExp.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
-              const allocated = parseFloat(div.amount) || 0;
+            {chapters.map((chapter) => {
+              // Filter budget divisions and expenses for this chapter
+              const chapterDivisions = budgetDivisions.filter((div) => div.chapter_id === chapter.id);
+              const chapterExpenses = chapterDivisions.reduce((acc, div) => {
+                acc[div.id] = filteredExpenses[div.id] || [];
+                return acc;
+              }, {});
+              const allChapterExpenses = Object.values(chapterExpenses).flat();
+              if (allChapterExpenses.length === 0) return null;
+
+              // Group expenses by article
+              const articleMap = articles.reduce((acc, ar) => {
+                if (ar.chapter_id === chapter.id) {
+                  acc[ar.id] = chapterDivisions
+                    .filter((div) => div.article_id === ar.id)
+                    .reduce((expAcc, div) => {
+                      expAcc.push(...(filteredExpenses[div.id] || []));
+                      return expAcc;
+                    }, []);
+                }
+                return acc;
+              }, {});
+
+              // Group expenses by sousarticle
+              const sousarticleMap = sousarticles.reduce((acc, sa) => {
+                if (articles.find((ar) => ar.id === sa.article_id && ar.chapter_id === chapter.id)) {
+                  acc[sa.id] = chapterDivisions
+                    .filter((div) => div.sousarticle_id === sa.id)
+                    .reduce((expAcc, div) => {
+                      expAcc.push(...(filteredExpenses[div.id] || []));
+                      return expAcc;
+                    }, []);
+                }
+                return acc;
+              }, {});
+
+              // Expenses directly under chapter (no article or sousarticle)
+              const directChapterExpenses = allChapterExpenses.filter((exp) => {
+                const div = budgetDivisions.find((d) => d.id === exp.budget_division_id);
+                return div && !div.article_id && !div.sousarticle_id;
+              });
+              const totalSpent = allChapterExpenses.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
+              const allocated = chapterDivisions.reduce((sum, div) => sum + (parseFloat(div.amount) || 0), 0);
               const remaining = allocated - totalSpent;
+
               return (
-                <li key={div.id}>
-                  <ToggleButton onClick={() => toggleDivision(div.id)}>
+                <li key={chapter.id}>
+                  <ToggleButton onClick={() => toggleDivision(chapter.id)}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <FaMoneyBillWave size={20} color="#001A82" />
-                      <span>{name}</span>
+                      <span>{chapter.name || "Unknown Chapter"}</span>
                     </div>
-                    <div>{openDivisions[div.id] ? <MdExpandLess size={20} /> : <MdExpandMore size={20} />}</div>
+                    <div>{openDivisions[chapter.id] ? <MdExpandLess size={20} /> : <MdExpandMore size={20} />}</div>
                   </ToggleButton>
-                  {openDivisions[div.id] && (
+                  {openDivisions[chapter.id] && (
                     <div>
-                      {filteredExp.map((exp) => {
-                        const amount = `-${exp.amount.toFixed(2)} DA`;
-                        const date = new Date(exp.created_at).toLocaleDateString();
+                      {directChapterExpenses.length === 0 &&
+                        Object.values(articleMap).every((exp) => exp.length === 0) &&
+                        Object.values(sousarticleMap).every((exp) => exp.length === 0) && (
+                          <div>
+                            {allChapterExpenses.map((exp) => {
+                              const amount = `-${exp.amount.toFixed(2)} DA`;
+                              const date = new Date(exp.created_at).toLocaleDateString();
+                              return (
+                                <TransactionItem key={exp.id}>
+                                  <span>Amount: {amount}</span>
+                                  <span>Date: {date}</span>
+                                  <span>Type: Expense</span>
+                                </TransactionItem>
+                              );
+                            })}
+                          </div>
+                        )}
+                      {Object.entries(articleMap).map(([articleId, articleExpenses]) => {
+                        if (articleExpenses.length === 0) return null;
+                        const article = articles.find((ar) => ar.id === parseInt(articleId));
                         return (
-                          <TransactionItem key={exp.id}>
-                            <span>Amount: {amount}</span>
-                            <span>Date: {date}</span>
-                            <span>Type: Expense</span>
-                          </TransactionItem>
+                          <div key={articleId}>
+                            <ToggleButton onClick={() => toggleArticle(articleId)}>
+                              <span>{article ? article.name : "Unknown Article"}</span>
+                              <div>{openArticles[articleId] ? <MdExpandLess size={20} /> : <MdExpandMore size={20} />}</div>
+                            </ToggleButton>
+                            {openArticles[articleId] && (
+                              <List>
+                                {Object.entries(sousarticleMap).map(([sousarticleId, sousarticleExpenses]) => {
+                                  if (sousarticleExpenses.length === 0) return null;
+                                  const sousarticle = sousarticles.find((sa) => sa.id === parseInt(sousarticleId));
+                                  if (sousarticle && sousarticle.article_id !== parseInt(articleId)) return null;
+                                  return (
+                                    <li key={sousarticleId}>
+                                      <ToggleButton onClick={() => toggleSousarticle(sousarticleId)}>
+                                        <span>{sousarticle ? sousarticle.name : "Unknown Sousarticle"}</span>
+                                        <div>{openSousarticles[sousarticleId] ? <MdExpandLess size={20} /> : <MdExpandMore size={20} />}</div>
+                                      </ToggleButton>
+                                      {openSousarticles[sousarticleId] && (
+                                        <div>
+                                          {sousarticleExpenses.map((exp) => {
+                                            const amount = `-${exp.amount.toFixed(2)} DA`;
+                                            const date = new Date(exp.created_at).toLocaleDateString();
+                                            return (
+                                              <TransactionItem key={exp.id}>
+                                                <span>Amount: {amount}</span>
+                                                <span>Date: {date}</span>
+                                                <span>Type: Expense</span>
+                                              </TransactionItem>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    </li>
+                                  );
+                                })}
+                                {Object.values(sousarticleMap).every((exp) => exp.length === 0) && (
+                                  <div>
+                                    {articleExpenses.map((exp) => {
+                                      const amount = `-${exp.amount.toFixed(2)} DA`;
+                                      const date = new Date(exp.created_at).toLocaleDateString();
+                                      return (
+                                        <TransactionItem key={exp.id}>
+                                          <span>Amount: {amount}</span>
+                                          <span>Date: {date}</span>
+                                          <span>Type: Expense</span>
+                                        </TransactionItem>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </List>
+                            )}
+                          </div>
                         );
                       })}
                       <Summary>
