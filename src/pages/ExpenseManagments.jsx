@@ -111,16 +111,99 @@ function ExpenseManagments() {
   const [openChapters, setOpenChapters] = useState({});
   const [expenseInputs, setExpenseInputs] = useState({});
   const [descriptionInputs, setDescriptionInputs] = useState({});
-  const [error, setError] = useState("");
+  const [error, setError] = useState(""); 
+  
+  const [wilaya, setWilaya] = useState('');
+
+  const [laboratory, setLaboratory] = useState({});
+
   const [loading, setLoading] = useState(true);
   const [budgetDivisions, setBudgetDivisions] = useState([]);
   const [expenses, setExpenses] = useState({}); // Store expenses by divisionId
+
+
+  const fetchLaboratory = async () => {
+    try {
+      const lab = await window.api.getLaboratory();
+      setLaboratory(lab[0] || {});
+      if (lab[0]?.wilaya) findWilaya(lab[0].wilaya);
+    } catch (error) {
+      console.error("Error fetching laboratory:", error);
+    }
+  };
+
+  const wilayas = [
+    { id: 1, wilaya: "Adrar" },
+    { id: 2, wilaya: "Chlef" },
+    { id: 3, wilaya: "Laghouat" },
+    { id: 4, wilaya: "Oum El Bouaghi" },
+    { id: 5, wilaya: "Batna" },
+    { id: 6, wilaya: "Béjaïa" },
+    { id: 7, wilaya: "Biskra" },
+    { id: 8, wilaya: "Béchar" },
+    { id: 9, wilaya: "Blida" },
+    { id: 10, wilaya: "Bouira" },
+    { id: 11, wilaya: "Tamanrasset" },
+    { id: 12, wilaya: "Tébessa" },
+    { id: 13, wilaya: "Tlemcen" },
+    { id: 14, wilaya: "Tiaret" },
+    { id: 15, wilaya: "Tizi Ouzou" },
+    { id: 16, wilaya: "Alger" },
+    { id: 17, wilaya: "Djelfa" },
+    { id: 18, wilaya: "Jijel" },
+    { id: 19, wilaya: "Sétif" },
+    { id: 20, wilaya: "Saïda" },
+    { id: 21, wilaya: "Skikda" },
+    { id: 22, wilaya: "Sidi Bel Abbès" },
+    { id: 23, wilaya: "Annaba" },
+    { id: 24, wilaya: "Guelma" },
+    { id: 25, wilaya: "Constantine" },
+    { id: 26, wilaya: "Médéa" },
+    { id: 27, wilaya: "Mostaganem" },
+    { id: 28, wilaya: "M'Sila" },
+    { id: 29, wilaya: "Mascara" },
+    { id: 30, wilaya: "Ouargla" },
+    { id: 31, wilaya: "Oran" },
+    { id: 32, wilaya: "El Bayadh" },
+    { id: 33, wilaya: "Illizi" },
+    { id: 34, wilaya: "Bordj Bou Arréridj" },
+    { id: 35, wilaya: "Boumerdès" },
+    { id: 36, wilaya: "El Tarf" },
+    { id: 37, wilaya: "Tindouf" },
+    { id: 38, wilaya: "Tissemsilt" },
+    { id: 39, wilaya: "El Oued" },
+    { id: 40, wilaya: "Khenchela" },
+    { id: 41, wilaya: "Souk Ahras" },
+    { id: 42, wilaya: "Tipaza" },
+    { id: 43, wilaya: "Mila" },
+    { id: 44, wilaya: "Aïn Defla" },
+    { id: 45, wilaya: "Naâma" },
+    { id: 46, wilaya: "Aïn Témouchent" },
+    { id: 47, wilaya: "Ghardaïa" },
+    { id: 48, wilaya: "Relizane" },
+    { id: 49, wilaya: "Timimoun" },
+    { id: 50, wilaya: "Bordj Badji Mokhtar" },
+    { id: 51, wilaya: "Ouled Djellal" },
+    { id: 52, wilaya: "Beni Abbès" },
+    { id: 53, wilaya: "In Salah" },
+    { id: 54, wilaya: "In Guezzam" },
+    { id: 55, wilaya: "Touggourt" },
+    { id: 56, wilaya: "Djanet" },
+    { id: 57, wilaya: "El M'Ghair" },
+    { id: 58, wilaya: "El Menia" },
+  ];
+
+  const findWilaya = (id) => {
+    const wilaya = wilayas.find((w) => w.id === parseInt(id));
+    setWilaya(wilaya ? wilaya.wilaya : '');
+  };
 
   useEffect(() => {
     if (!user) {
       navigate("/login");
       return;
     }
+
 
     const fetchData = async () => {
       setLoading(true);
@@ -136,6 +219,7 @@ function ExpenseManagments() {
         setArticles(ar || []);
         setSousarticles(so || []);
         setBudgetDivisions(divs || []);
+        fetchLaboratory()
 
         // Fetch expenses for all divisions
         const expensePromises = divs.map((div) => window.api.getExpensesByDivision(div.id));
@@ -235,6 +319,7 @@ function ExpenseManagments() {
   };
 
   const generatePDF = () => {
+    findWilaya(laboratory.wilaya);
     const pdf = new jsPDF("p", "pt", "a4");
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
@@ -251,10 +336,16 @@ function ExpenseManagments() {
       pdf.setFont("Helvetica", "normal");
       pdf.setFontSize(12);
       pdf.text("People's Democratic Republic of Algeria", margin, 40);
-      pdf.text("Expense Report", margin, 60);
-      pdf.text(`Generated on: ${new Date().toLocaleString("en-US", { timeZone: "CET" })}`, margin, 80);
-      pdf.text(`User: ${user?.email || "N/A"}`, margin, 100);
+      if (laboratory) {
+        pdf.text(`Ministry of Higher Education and Scientific Research`, margin, 60);
+        pdf.text(`${laboratory.univ || "N/A"}`, margin, 80);
+        pdf.text(`Faculty of Exact Science`, margin, 100);
+        pdf.text(`Laboratory: ${laboratory.name || "N/A"}`, margin, 120);
+        pdf.text(`Wilaya: ${wilaya || laboratory.wilaya || "N/A"}`, margin, 140);
+      }
+
     };
+
 
     const checkPageBreak = (additionalHeight) => {
       if (y + additionalHeight > pageHeight - margin) {
