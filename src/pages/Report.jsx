@@ -119,17 +119,17 @@ function Report() {
   const [openSousarticles, setOpenSousarticles] = useState({});
 
   const getItemName = (division) => {
-    if (division.chapter_id) {
-      const chapter = chapters.find((ch) => ch.id === division.chapter_id);
-      return chapter ? chapter.name : "Unknown Chapter";
+    if (division.sousarticle_id) {
+      const sousarticle = sousarticles.find((sa) => sa.id === division.sousarticle_id);
+      return sousarticle ? sousarticle.name : "Unknown Sousarticle";
     }
     if (division.article_id) {
       const article = articles.find((ar) => ar.id === division.article_id);
       return article ? article.name : "Unknown Article";
     }
-    if (division.sousarticle_id) {
-      const sousarticle = sousarticles.find((sa) => sa.id === division.sousarticle_id);
-      return sousarticle ? sousarticle.name : "Unknown Sousarticle";
+    if (division.chapter_id) {
+      const chapter = chapters.find((ch) => ch.id === division.chapter_id);
+      return chapter ? chapter.name : "Unknown Chapter";
     }
     return "Unnamed Division";
   };
@@ -241,7 +241,7 @@ function Report() {
         pdf.text(`Laboratory: ${laboratory.name || "N/A"}`, margin, 120);
         pdf.text(`Wilaya: ${laboratory.wilaya || "N/A"}`, margin, 140);
       }
-         };
+        };
 
     const checkPageBreak = (additionalHeight) => {
       if (y + additionalHeight > pageHeight - margin) {
@@ -366,7 +366,6 @@ function Report() {
           </FilterContainer>
           <List>
             {chapters.map((chapter) => {
-              // Filter budget divisions and expenses for this chapter
               const chapterDivisions = budgetDivisions.filter((div) => div.chapter_id === chapter.id);
               const chapterExpenses = chapterDivisions.reduce((acc, div) => {
                 acc[div.id] = filteredExpenses[div.id] || [];
@@ -375,7 +374,6 @@ function Report() {
               const allChapterExpenses = Object.values(chapterExpenses).flat();
               if (allChapterExpenses.length === 0) return null;
 
-              // Group expenses by article
               const articleMap = articles.reduce((acc, ar) => {
                 if (ar.chapter_id === chapter.id) {
                   acc[ar.id] = chapterDivisions
@@ -388,7 +386,6 @@ function Report() {
                 return acc;
               }, {});
 
-              // Group expenses by sousarticle
               const sousarticleMap = sousarticles.reduce((acc, sa) => {
                 if (articles.find((ar) => ar.id === sa.article_id && ar.chapter_id === chapter.id)) {
                   acc[sa.id] = chapterDivisions
@@ -401,11 +398,6 @@ function Report() {
                 return acc;
               }, {});
 
-              // Expenses directly under chapter (no article or sousarticle)
-              const directChapterExpenses = allChapterExpenses.filter((exp) => {
-                const div = budgetDivisions.find((d) => d.id === exp.budget_division_id);
-                return div && !div.article_id && !div.sousarticle_id;
-              });
               const totalSpent = allChapterExpenses.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
               const allocated = chapterDivisions.reduce((sum, div) => sum + (parseFloat(div.amount) || 0), 0);
               const remaining = allocated - totalSpent;
@@ -421,82 +413,90 @@ function Report() {
                   </ToggleButton>
                   {openDivisions[chapter.id] && (
                     <div>
-                      {directChapterExpenses.length === 0 &&
-                        Object.values(articleMap).every((exp) => exp.length === 0) &&
-                        Object.values(sousarticleMap).every((exp) => exp.length === 0) && (
-                          <div>
-                            {allChapterExpenses.map((exp) => {
-                              const amount = `-${exp.amount.toFixed(2)} DA`;
-                              const date = new Date(exp.created_at).toLocaleDateString();
-                              return (
-                                <TransactionItem key={exp.id}>
-                                  <span>Amount: {amount}</span>
-                                  <span>Date: {date}</span>
-                                  <span>Type: Expense</span>
-                                </TransactionItem>
-                              );
-                            })}
-                          </div>
-                        )}
-                      {Object.entries(articleMap).map(([articleId, articleExpenses]) => {
-                        if (articleExpenses.length === 0) return null;
-                        const article = articles.find((ar) => ar.id === parseInt(articleId));
-                        return (
-                          <div key={articleId}>
-                            <ToggleButton onClick={() => toggleArticle(articleId)}>
-                              <span>{article ? article.name : "Unknown Article"}</span>
-                              <div>{openArticles[articleId] ? <MdExpandLess size={20} /> : <MdExpandMore size={20} />}</div>
-                            </ToggleButton>
-                            {openArticles[articleId] && (
-                              <List>
-                                {Object.entries(sousarticleMap).map(([sousarticleId, sousarticleExpenses]) => {
-                                  if (sousarticleExpenses.length === 0) return null;
-                                  const sousarticle = sousarticles.find((sa) => sa.id === parseInt(sousarticleId));
-                                  if (sousarticle && sousarticle.article_id !== parseInt(articleId)) return null;
-                                  return (
-                                    <li key={sousarticleId}>
-                                      <ToggleButton onClick={() => toggleSousarticle(sousarticleId)}>
-                                        <span>{sousarticle ? sousarticle.name : "Unknown Sousarticle"}</span>
-                                        <div>{openSousarticles[sousarticleId] ? <MdExpandLess size={20} /> : <MdExpandMore size={20} />}</div>
-                                      </ToggleButton>
-                                      {openSousarticles[sousarticleId] && (
-                                        <div>
-                                          {sousarticleExpenses.map((exp) => {
-                                            const amount = `-${exp.amount.toFixed(2)} DA`;
-                                            const date = new Date(exp.created_at).toLocaleDateString();
-                                            return (
-                                              <TransactionItem key={exp.id}>
-                                                <span>Amount: {amount}</span>
-                                                <span>Date: {date}</span>
-                                                <span>Type: Expense</span>
-                                              </TransactionItem>
-                                            );
-                                          })}
-                                        </div>
-                                      )}
-                                    </li>
-                                  );
-                                })}
-                                {Object.values(sousarticleMap).every((exp) => exp.length === 0) && (
-                                  <div>
-                                    {articleExpenses.map((exp) => {
-                                      const amount = `-${exp.amount.toFixed(2)} DA`;
-                                      const date = new Date(exp.created_at).toLocaleDateString();
-                                      return (
-                                        <TransactionItem key={exp.id}>
-                                          <span>Amount: {amount}</span>
-                                          <span>Date: {date}</span>
-                                          <span>Type: Expense</span>
-                                        </TransactionItem>
-                                      );
-                                    })}
-                                  </div>
-                                )}
-                              </List>
-                            )}
-                          </div>
-                        );
-                      })}
+                      {Object.values(sousarticleMap).some((exp) => exp.length > 0) ? (
+                        Object.entries(sousarticleMap).map(([sousarticleId, sousarticleExpenses]) => {
+                          if (sousarticleExpenses.length === 0) return null;
+                          const sousarticle = sousarticles.find((sa) => sa.id === parseInt(sousarticleId));
+                          const article = articles.find((ar) => ar.id === sousarticle?.article_id);
+                          return (
+                            <div key={sousarticleId}>
+                              {article && (
+                                <ToggleButton onClick={() => toggleArticle(article.id)}>
+                                  <span>{article.name || "Unknown Article"}</span>
+                                  <div>{openArticles[article.id] ? <MdExpandLess size={20} /> : <MdExpandMore size={20} />}</div>
+                                </ToggleButton>
+                              )}
+                              {openArticles[article?.id] && (
+                                <List>
+                                  <li key={sousarticleId}>
+                                    <ToggleButton onClick={() => toggleSousarticle(sousarticleId)}>
+                                      <span>{sousarticle ? sousarticle.name : "Unknown Sousarticle"}</span>
+                                      <div>{openSousarticles[sousarticleId] ? <MdExpandLess size={20} /> : <MdExpandMore size={20} />}</div>
+                                    </ToggleButton>
+                                    {openSousarticles[sousarticleId] && (
+                                      <div>
+                                        {sousarticleExpenses.map((exp) => {
+                                          const amount = `-${exp.amount.toFixed(2)} DA`;
+                                          const date = new Date(exp.created_at).toLocaleDateString();
+                                          return (
+                                            <TransactionItem key={exp.id}>
+                                              <span>Amount: {amount}</span>
+                                              <span>Date: {date}</span>
+                                              <span>Type: Expense</span>
+                                            </TransactionItem>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </li>
+                                </List>
+                              )}
+                            </div>
+                          );
+                        })
+                      ) : Object.values(articleMap).some((exp) => exp.length > 0) ? (
+                        Object.entries(articleMap).map(([articleId, articleExpenses]) => {
+                          if (articleExpenses.length === 0) return null;
+                          const article = articles.find((ar) => ar.id === parseInt(articleId));
+                          return (
+                            <div key={articleId}>
+                              <ToggleButton onClick={() => toggleArticle(articleId)}>
+                                <span>{article ? article.name : "Unknown Article"}</span>
+                                <div>{openArticles[articleId] ? <MdExpandLess size={20} /> : <MdExpandMore size={20} />}</div>
+                              </ToggleButton>
+                              {openArticles[articleId] && (
+                                <div>
+                                  {articleExpenses.map((exp) => {
+                                    const amount = `-${exp.amount.toFixed(2)} DA`;
+                                    const date = new Date(exp.created_at).toLocaleDateString();
+                                    return (
+                                      <TransactionItem key={exp.id}>
+                                        <span>Amount: {amount}</span>
+                                        <span>Date: {date}</span>
+                                        <span>Type: Expense</span>
+                                      </TransactionItem>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div>
+                          {allChapterExpenses.map((exp) => {
+                            const amount = `-${exp.amount.toFixed(2)} DA`;
+                            const date = new Date(exp.created_at).toLocaleDateString();
+                            return (
+                              <TransactionItem key={exp.id}>
+                                <span>Amount: {amount}</span>
+                                <span>Date: {date}</span>
+                                <span>Type: Expense</span>
+                              </TransactionItem>
+                            );
+                          })}
+                        </div>
+                      )}
                       <Summary>
                         <p>Total Spent: {totalSpent.toFixed(2)} DA</p>
                         <p>Remaining: {remaining.toFixed(2)} DA</p>

@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { useNavigate, useLocation } from "react-router-dom";
 import { MdHome, MdMoney, MdPerson, MdSettings, MdBarChart } from "react-icons/md";
+import { GiMoneyStack } from "react-icons/gi";
+import { GrMoney } from "react-icons/gr";
 
 const SidebarContainer = styled.div`
   width: 250px;
@@ -125,13 +127,13 @@ const SideBar = ({ isOpen, onClose }) => {
             <MdHome size={24} style={{ marginRight: 20 }} /> Finance Dashboard
           </NavItem>
           <NavItem isActive={getNavItemClass("/budget")} onClick={() => { navigate("/budget"); onClose(); }}>
-            <MdMoney size={24} style={{ marginRight: 20 }} /> Create Budget
+            <GiMoneyStack size={24} style={{ marginRight: 20 }} /> Create Budget
           </NavItem>
           <NavItem isActive={getNavItemClass("/budget-div")} onClick={() => { navigate("/budget-div"); onClose(); }}>
             <MdMoney size={24} style={{ marginRight: 20 }} /> Budget Division
           </NavItem>
           <NavItem isActive={getNavItemClass("/expenses")} onClick={() => { navigate("/expenses"); onClose(); }}>
-            <MdMoney size={24} style={{ marginRight: 20 }} /> Expenses
+            <GrMoney size={24} style={{ marginRight: 20 }} /> Expenses
           </NavItem>
           <NavItem isActive={getNavItemClass("/report")} onClick={() => { navigate("/report"); onClose(); }}>
             <MdBarChart size={24} style={{ marginRight: 20 }} /> Report

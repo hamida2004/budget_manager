@@ -94,7 +94,7 @@ const Login = () => {
 
   return (
     <Container>
-      <ImageSide to="signup" />
+      {/* <ImageSide to="signup" /> */}
       <Div>
         <div
           style={{
